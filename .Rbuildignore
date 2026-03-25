@@ -1,0 +1,8 @@
+^app\.R$
+^data-raw$
+^\.cursor$
+^ctas\.app\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^\.github$
+^README\.Rmd$
