@@ -10,6 +10,7 @@ mod_DataInput_ui(id)
 \item{id}{Module namespace ID.}
 }
 \description{
-Placeholder data loader with a button to load bundled sample data.
-Designed to be replaced with a custom data source module (e.g. snwflid).
+Lets the user choose between the bundled ctas sample data and the
+pharmaversesdtm-derived SDTM sample data. Upload support is reserved
+for a future version.
 }

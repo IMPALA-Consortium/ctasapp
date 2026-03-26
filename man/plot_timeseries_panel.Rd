@@ -4,19 +4,22 @@
 \alias{plot_timeseries_panel}
 \title{Single panel of timeseries plot for a group of sites}
 \usage{
-plot_timeseries_panel(df, thresh, sites)
+plot_timeseries_panel(df, thresh, sites, has_range_norm = FALSE)
 }
 \arguments{
-\item{df}{Data frame, pre-filtered to one parameter with site-level score columns.}
+\item{df}{Data frame, pre-filtered with site-level score columns.}
 
 \item{thresh}{Numeric threshold.}
 
 \item{sites}{Character vector of sites to facet.}
+
+\item{has_range_norm}{Logical, whether to add 0/1 reference lines.}
 }
 \value{
 A ggplot object.
 }
 \description{
-Single panel of timeseries plot for a group of sites
+Facets by \code{parameter_name ~ site_label} so that norm and ratio-missing
+companions appear as separate rows within the same panel.
 }
 \keyword{internal}
