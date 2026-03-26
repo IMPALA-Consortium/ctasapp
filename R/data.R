@@ -28,3 +28,39 @@
 #' }
 #' @source Generated via `data-raw/sample_data.R`
 "sample_ctas_results"
+
+
+#' Sample SDTM-derived ctas input data
+#'
+#' Generated from `pharmaversesdtm` domains (dm, lb, vs, rs_onco) using
+#' [Input_Labs()], [Input_VS()], [Input_RS()], [Input_BMI()], and
+#' [combine_ctas_input()]. Contains range-normalized labs, ratio-missing labs,
+#' numeric vital signs, categorical response data, and weight categories.
+#'
+#' @format A list with five elements:
+#' \describe{
+#'   \item{data}{Data frame: subject_id, parameter_id, timepoint_1_name,
+#'     timepoint_rank, result, timepoint_2_name, baseline}
+#'   \item{subjects}{Data frame: subject_id, site, country, region}
+#'   \item{parameters}{Data frame: parameter_id, parameter_name,
+#'     parameter_category_1 through _3, plus ctas config columns}
+#'   \item{custom_timeseries}{Empty data frame}
+#'   \item{custom_reference_groups}{Empty data frame}
+#' }
+#' @source Generated from `pharmaversesdtm` via `data-raw/sample_sdtm_data.R`
+"sample_sdtm_data"
+
+
+#' Sample SDTM-derived ctas analysis results
+#'
+#' Output of `ctas::process_a_study()` run on [sample_sdtm_data].
+#'
+#' @format A list with four elements:
+#' \describe{
+#'   \item{timeseries}{Tibble: timeseries metadata}
+#'   \item{timeseries_features}{Tibble: per-subject feature values}
+#'   \item{PCA_coordinates}{Tibble: first two principal components per subject}
+#'   \item{site_scores}{Tibble: site biasness scores per timeseries/feature}
+#' }
+#' @source Generated via `data-raw/sample_sdtm_data.R`
+"sample_sdtm_results"

@@ -97,6 +97,75 @@ prepare_score_table <- function(ctas_results, parameter_id) {
 }
 
 
+#' Prepare wide score table for multiple parameter IDs
+#'
+#' Like [prepare_score_table()] but accepts a vector of parameter IDs, pooling
+#' scores across them. Used for grouped categorical/bar parameters.
+#'
+#' @param ctas_results List as returned by [ctas::process_a_study()].
+#' @param parameter_ids Character vector of parameter IDs.
+#'
+#' @return A data frame with columns: site, one per feature, max_score.
+#' @export
+prepare_score_table_multi <- function(ctas_results, parameter_ids) {
+  scores_long <- ctas_results$site_scores |>
+    dplyr::left_join(
+      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    ) |>
+    dplyr::filter(.data$parameter_id %in% .env$parameter_ids) |>
+    dplyr::summarise(
+      score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      .by = c("site", "feature")
+    )
+
+  if (nrow(scores_long) == 0) {
+    return(data.frame(site = character(0), max_score = numeric(0)))
+  }
+
+  scores_wide <- scores_long |>
+    tidyr::pivot_wider(names_from = "feature", values_from = "score", values_fill = 0) |>
+    dplyr::mutate(
+      max_score = do.call(pmax, c(dplyr::across(-"site"), na.rm = TRUE))
+    ) |>
+    dplyr::arrange(dplyr::desc(.data$max_score))
+
+  feature_cols <- setdiff(names(scores_wide), c("site", "max_score"))
+
+  scores_wide |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(feature_cols), \(x) round(x, 2))) |>
+    dplyr::mutate(max_score = round(.data$max_score, 2))
+}
+
+
+#' Prepare timeseries data for outlier sites (multiple parameters)
+#'
+#' Like [prepare_ts_data()] but accepts a vector of parameter IDs.
+#'
+#' @param measures Data frame as returned by [prepare_measures()].
+#' @param parameter_ids Character vector of parameter IDs.
+#' @param thresh Numeric threshold for outlier flagging.
+#'
+#' @return A data frame sorted by site, subject_id, timepoint_rank.
+#' @export
+prepare_ts_data_multi <- function(measures, parameter_ids, thresh) {
+  measures |>
+    dplyr::filter(
+      .data$parameter_id %in% .env$parameter_ids,
+      .data$max_score > .env$thresh
+    ) |>
+    dplyr::select(
+      "site", "subject_id", "parameter_id", "timepoint_rank",
+      "timepoint_1_name", "result", "parameter_name", "max_score"
+    ) |>
+    dplyr::mutate(
+      result = round(.data$result, 3),
+      max_score = round(.data$max_score, 2)
+    ) |>
+    dplyr::arrange(.data$site, .data$subject_id, .data$timepoint_rank)
+}
+
+
 #' Prepare timeseries data for outlier sites
 #'
 #' Filters the measures data frame to a single parameter and sites whose

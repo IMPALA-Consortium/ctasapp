@@ -1,7 +1,8 @@
 #' Data Input Module - UI
 #'
-#' Placeholder data loader with a button to load bundled sample data.
-#' Designed to be replaced with a custom data source module (e.g. snwflid).
+#' Lets the user choose between the bundled ctas sample data and the
+#' pharmaversesdtm-derived SDTM sample data. Upload support is reserved
+#' for a future version.
 #'
 #' @param id Module namespace ID.
 #' @export
@@ -10,10 +11,19 @@ mod_DataInput_ui <- function(id) {
   bslib::card(
     bslib::card_header("Data Source"),
     bslib::card_body(
-      shiny::p("Load the bundled ctas sample data or upload your own data."),
+      shiny::p("Select a sample dataset to explore, or upload your own data."),
+      shiny::radioButtons(
+        ns("dataset_choice"),
+        "Sample Dataset",
+        choices = c(
+          "ctas sample" = "ctas",
+          "SDTM sample (pharmaversesdtm)" = "sdtm"
+        ),
+        selected = "ctas"
+      ),
       shiny::actionButton(
         ns("load_sample"),
-        "Use Sample Data",
+        "Load Selected Data",
         class = "btn-primary",
         icon = shiny::icon("database")
       ),
@@ -43,14 +53,23 @@ mod_DataInput_server <- function(id) {
     rv_ctas_results <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(input$load_sample, {
-      measures <- prepare_measures(
-        ctasapp::sample_ctas_data,
-        ctasapp::sample_ctas_results
-      )
+      choice <- input$dataset_choice %||% "ctas"
+
+      if (choice == "sdtm") {
+        ctas_data <- ctasapp::sample_sdtm_data
+        ctas_results <- ctasapp::sample_sdtm_results
+        label <- "SDTM sample"
+      } else {
+        ctas_data <- ctasapp::sample_ctas_data
+        ctas_results <- ctasapp::sample_ctas_results
+        label <- "ctas sample"
+      }
+
+      measures <- prepare_measures(ctas_data, ctas_results)
       rv_measures(measures)
-      rv_ctas_results(ctasapp::sample_ctas_results)
+      rv_ctas_results(ctas_results)
       shiny::showNotification(
-        paste("Loaded sample data:", nrow(measures), "observations"),
+        paste0("Loaded ", label, " data: ", nrow(measures), " observations"),
         type = "message",
         duration = 3
       )

@@ -2,26 +2,25 @@
 % Please edit documentation in R/utils_plot.R
 \name{plot_timeseries}
 \alias{plot_timeseries}
-\title{Plot numeric timeseries for a parameter}
+\title{Plot numeric timeseries for one or more parameters}
 \usage{
-plot_timeseries(param, df_measures, thresh = 0, sites = NULL)
+plot_timeseries(param_ids, df_measures, thresh = 0, sites = NULL)
 }
 \arguments{
-\item{param}{Character scalar, the \code{parameter_id} to plot.}
+\item{param_ids}{Character vector of \code{parameter_id} values to include.}
 
 \item{df_measures}{Data frame as returned by \code{\link[=prepare_measures]{prepare_measures()}}.}
 
 \item{thresh}{Numeric, score threshold for flagging. Default: 0.}
 
-\item{sites}{Character vector of site IDs to highlight. If NULL, picks
-all sites above threshold plus the top 3 by score.}
+\item{sites}{Character vector of site IDs to highlight. If NULL, auto-selected.}
 }
 \value{
 A ggplot2/patchwork object.
 }
 \description{
-Adapted from \code{applytsoa::report_plot_measure_val_numeric()}.
-Background: grey patient lines for non-flagged sites.
-Foreground: colored patient lines for selected/flagged sites,
-orange if above threshold, blue otherwise.
+Adapted from applytsoa's \code{report_plot_measure_val_numeric()} / \code{plot_num()}.
+When multiple parameter_ids are passed (e.g. a range-normalized lab + its
+ratio-missing companion), they are faceted by \code{parameter_name ~ site_label}
+so they appear as rows within the same panel.
 }

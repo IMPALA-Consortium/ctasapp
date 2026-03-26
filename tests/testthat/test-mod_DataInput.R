@@ -15,9 +15,9 @@ test_that("mod_DataInput_server returns list with measures and ctas_results", {
   })
 })
 
-test_that("mod_DataInput_server loads sample data on button click", {
+test_that("mod_DataInput_server loads ctas sample data on button click", {
   shiny::testServer(mod_DataInput_server, {
-    session$setInputs(load_sample = 1)
+    session$setInputs(dataset_choice = "ctas", load_sample = 1)
 
     returned <- session$getReturned()
     m <- returned$measures()
@@ -33,9 +33,25 @@ test_that("mod_DataInput_server loads sample data on button click", {
   })
 })
 
+test_that("mod_DataInput_server loads SDTM sample data on button click", {
+  shiny::testServer(mod_DataInput_server, {
+    session$setInputs(dataset_choice = "sdtm", load_sample = 1)
+
+    returned <- session$getReturned()
+    m <- returned$measures()
+    res <- returned$ctas_results()
+
+    expect_s3_class(m, "data.frame")
+    expect_true(nrow(m) > 0)
+
+    cats <- unique(m$parameter_category_3)
+    expect_true("categorical" %in% cats || "bar" %in% cats || "range_normalized" %in% cats)
+  })
+})
+
 test_that("mod_DataInput_server renders status after loading", {
   shiny::testServer(mod_DataInput_server, {
-    session$setInputs(load_sample = 1)
+    session$setInputs(dataset_choice = "ctas", load_sample = 1)
 
     status <- output$status
     expect_true(inherits(status, "list") || is.character(status$html))

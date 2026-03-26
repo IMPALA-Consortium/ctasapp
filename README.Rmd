@@ -18,18 +18,18 @@ knitr::opts_chunk$set(
 # ctasapp
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/IMPALA-Consortium/ctas_app/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/IMPALA-Consortium/ctas_app/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/IMPALA-Consortium/ctasapp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/IMPALA-Consortium/ctasapp/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 Interactive Shiny application for exploring results from the [{ctas}](https://github.com/IMPALA-Consortium/ctas) (Clinical Timeseries Anomaly Spotter) R package. Provides drill-down visualizations of site-level outlier scores and subject-level time series data.
 
 ## Installation
 
-You can install the development version of ctasapp from [GitHub](https://github.com/IMPALA-Consortium/ctas_app) with:
+You can install the development version of ctasapp from [GitHub](https://github.com/IMPALA-Consortium/ctasapp) with:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("IMPALA-Consortium/ctas_app")
+remotes::install_github("IMPALA-Consortium/ctasapp")
 ```
 
 ## Usage
@@ -53,7 +53,7 @@ Since {ctas} is designed for use in a [GCP](https://en.wikipedia.org/wiki/Good_c
 - **Package Checks** - Standard package checks are run using GitHub Actions and must be passing before PRs are merged.
 - **Continuous Integration** - Continuous integration is provided via GitHub Actions.
 - **Code Formatting** - Code is formatted with {styler} before each release.
-- **Contributor Guidelines** - Contributor guidelines including step-by-step processes for code development are provided as a [vignette](https://impala-consortium.github.io/ctas_app/articles/ContributorGuidelines.html).
+- **Contributor Guidelines** - Contributor guidelines including step-by-step processes for code development are provided as a [vignette](https://impala-consortium.github.io/ctasapp/articles/ContributorGuidelines.html).
 
 ### Parking
 

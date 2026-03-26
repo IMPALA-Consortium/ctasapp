@@ -31,11 +31,91 @@ mod_FieldDetail_ui <- function(id) {
   )
 }
 
+#' Build display parameter lookup from measures
+#'
+#' Groups parameters by `parameter_category_2` (the "field" key). This
+#' naturally groups norm + missing-ratio labs under a single entry, and
+#' categorical one-hot levels under their shared prefix. The `plot_type`
+#' is determined by the dominant `parameter_category_3`; mixed types
+#' (e.g. `range_normalized` + `ratio_missing`) are treated as `"numeric"`.
+#'
+#' When multiple parameters share a `parameter_category_2` but have
+#' identical `parameter_category_3` values that aren't meant to be grouped
+#' (e.g. two independent numeric params with the same generic category),
+#' they are kept separate using `parameter_id` as the display key.
+#'
+#' @param df Measures data frame.
+#' @return A data frame with `display_id`, `parameter_ids` (list column),
+#'   and `plot_type`.
+#' @keywords internal
+build_param_lookup <- function(df) {
+  param_meta <- df |>
+    dplyr::distinct(.data$parameter_id, .data$parameter_category_2,
+                    .data$parameter_category_3)
+
+  by_cat2 <- param_meta |>
+    dplyr::summarise(
+      parameter_ids = list(.data$parameter_id),
+      plot_type = determine_plot_type(.data$parameter_category_3),
+      n_cat3 = dplyr::n_distinct(.data$parameter_category_3),
+      .by = "parameter_category_2"
+    )
+
+  # Groups with mixed category_3 (e.g. range_normalized + ratio_missing)
+  # or with categorical/bar types should stay grouped by category_2.
+  # Groups with a single category_3 that are "numeric" and have multiple
+  # parameter_ids should be split back to individual entries.
+  groupable_types <- c("categorical", "bar", "range_normalized", "ratio_missing")
+
+  needs_split <- by_cat2$n_cat3 == 1 &
+    !by_cat2$plot_type %in% groupable_types &
+    lengths(by_cat2$parameter_ids) > 1
+
+  keep <- by_cat2[!needs_split, ]
+  split_rows <- by_cat2[needs_split, ]
+
+  if (nrow(split_rows) > 0) {
+    expanded <- param_meta |>
+      dplyr::filter(.data$parameter_category_2 %in% split_rows$parameter_category_2) |>
+      dplyr::summarise(
+        parameter_ids = list(.data$parameter_id),
+        plot_type = dplyr::first(.data$parameter_category_3),
+        n_cat3 = 1L,
+        .by = "parameter_id"
+      ) |>
+      dplyr::rename(parameter_category_2 = "parameter_id")
+
+    keep <- dplyr::bind_rows(keep, expanded)
+  }
+
+  keep |>
+    dplyr::select("parameter_category_2", "parameter_ids", "plot_type") |>
+    dplyr::rename(display_id = "parameter_category_2")
+}
+
+
+#' Determine plot type from a vector of category_3 values
+#'
+#' Mixed numeric types (range_normalized + ratio_missing) map to "numeric".
+#' Single types pass through.
+#'
+#' @param cat3 Character vector of parameter_category_3 values.
+#' @return Character scalar plot type.
+#' @keywords internal
+determine_plot_type <- function(cat3) {
+  types <- unique(cat3)
+  if (length(types) == 1) return(types)
+  numeric_types <- c("numeric", "range_normalized", "ratio_missing")
+  if (all(types %in% numeric_types)) return("numeric")
+  types[1]
+}
+
+
 #' Field Detail Module - Server
 #'
-#' Renders a clickable list of parameter_ids in the sidebar. On selection,
+#' Renders a clickable list of parameters in the sidebar. On selection,
 #' shows a per-feature score table, the timeseries plot, and a raw data table
-#' for outlier sites.
+#' for outlier sites. Auto-detects plot type from `parameter_category_3`.
 #'
 #' @param id Module namespace ID.
 #' @param rctv_measures Reactive expression returning the measures data frame.
@@ -45,19 +125,32 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    rctv_param_lookup <- shiny::reactive({
+      df <- rctv_measures()
+      shiny::req(df)
+      build_param_lookup(df)
+    })
+
     param_outliers <- shiny::reactive({
       df <- rctv_measures()
       shiny::req(df)
+      lookup <- rctv_param_lookup()
       thresh <- input$thresh %||% 1.3
 
       site_scores <- df |>
-        dplyr::distinct(.data$site, .data$parameter_id, .data$max_score)
+        dplyr::distinct(.data$site, .data$parameter_id, .data$parameter_category_2,
+                        .data$max_score)
 
       site_scores |>
         dplyr::summarise(
-          n_outlier_sites = sum(.data$max_score > .env$thresh, na.rm = TRUE),
-          .by = "parameter_id"
+          max_score = max(.data$max_score, na.rm = TRUE),
+          .by = c("site", "parameter_category_2")
         ) |>
+        dplyr::summarise(
+          n_outlier_sites = sum(.data$max_score > .env$thresh, na.rm = TRUE),
+          .by = "parameter_category_2"
+        ) |>
+        dplyr::rename(display_id = "parameter_category_2") |>
         dplyr::arrange(dplyr::desc(.data$n_outlier_sites))
     })
 
@@ -65,8 +158,8 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
       stats <- param_outliers()
       shiny::req(stats)
 
-      labels <- unname(lapply(stats$parameter_id, function(pid) {
-        n_out <- stats$n_outlier_sites[stats$parameter_id == pid]
+      labels <- unname(lapply(stats$display_id, function(pid) {
+        n_out <- stats$n_outlier_sites[stats$display_id == pid]
         badge_class <- if (n_out > 0) "badge bg-warning text-dark ms-1" else "badge bg-light text-muted ms-1"
         htmltools::tagList(
           pid,
@@ -78,14 +171,14 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
         ns("selected_param"),
         label = NULL,
         choiceNames = labels,
-        choiceValues = stats$parameter_id,
-        selected = stats$parameter_id[1]
+        choiceValues = stats$display_id,
+        selected = stats$display_id[1]
       )
     })
 
     output$plot_title <- shiny::renderText({
       p <- input$selected_param
-      if (is.null(p)) "Select a parameter" else paste("Timeseries:", p)
+      if (is.null(p)) "Select a parameter" else paste("Parameter:", p)
     })
 
     # -- Score table: per-feature scores pivoted wide --------------------------
@@ -94,8 +187,14 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
       shiny::req(res)
       shiny::req(input$selected_param)
 
+      lookup <- rctv_param_lookup()
+      sel <- input$selected_param
       thresh <- input$thresh %||% 1.3
-      scores_display <- prepare_score_table(res, input$selected_param)
+
+      match_row <- lookup$display_id == sel
+      param_ids <- lookup$parameter_ids[match_row][[1]]
+
+      scores_display <- prepare_score_table_multi(res, param_ids)
       scores_display$outlier <- ifelse(scores_display$max_score > thresh, "yes", "no")
 
       feature_cols <- setdiff(names(scores_display), c("site", "max_score", "outlier"))
@@ -131,13 +230,26 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
       dt
     })
 
-    # -- Timeseries plot -------------------------------------------------------
+    # -- Timeseries / categorical / bar plot -----------------------------------
     output$ts_plot <- shiny::renderPlot({
       df <- rctv_measures()
       shiny::req(df)
       shiny::req(input$selected_param)
 
-      plot_timeseries(input$selected_param, df, thresh = input$thresh)
+      lookup <- rctv_param_lookup()
+      sel <- input$selected_param
+      match_row <- lookup$display_id == sel
+      plot_type <- lookup$plot_type[match_row]
+      param_ids <- lookup$parameter_ids[match_row][[1]]
+      thresh <- input$thresh %||% 0
+
+      if (plot_type == "categorical") {
+        plot_categorical(param_ids, df, thresh = thresh)
+      } else if (plot_type == "bar") {
+        plot_bar(param_ids, df, thresh = thresh)
+      } else {
+        plot_timeseries(param_ids, df, thresh = thresh)
+      }
     }, res = 96)
 
     # -- Timeseries data table for outlier sites -------------------------------
@@ -146,8 +258,13 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
       shiny::req(df)
       shiny::req(input$selected_param)
 
+      lookup <- rctv_param_lookup()
+      sel <- input$selected_param
+      match_row <- lookup$display_id == sel
+      param_ids <- lookup$parameter_ids[match_row][[1]]
+
       thresh <- input$thresh %||% 1.3
-      ts_data <- prepare_ts_data(df, input$selected_param, thresh)
+      ts_data <- prepare_ts_data_multi(df, param_ids, thresh)
 
       DT::datatable(
         ts_data,

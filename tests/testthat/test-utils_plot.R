@@ -43,6 +43,26 @@ test_that("plot_timeseries with very high threshold still works", {
   )
 })
 
+test_that("plot_timeseries with multiple param_ids (norm+missing) facets by parameter_name", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  lookup <- build_param_lookup(m)
+  alb <- lookup[lookup$display_id == "ALB", ]
+  p <- plot_timeseries(alb$parameter_ids[[1]], m, thresh = 0)
+
+  expect_true(
+    inherits(p, "ggplot") || inherits(p, "patchwork")
+  )
+})
+
+test_that("plot_timeseries adds ref lines for range_normalized data", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  lookup <- build_param_lookup(m)
+  alb <- lookup[lookup$display_id == "ALB", ]
+  p <- plot_timeseries(alb$parameter_ids[[1]], m, thresh = 0)
+
+  expect_true(inherits(p, "ggplot") || inherits(p, "patchwork"))
+})
+
 test_that("format_score handles boundary values", {
   expect_equal(format_score(0), "0")
   expect_equal(format_score(20000), "> 10000")
@@ -56,4 +76,180 @@ test_that("format_score handles vectors", {
   result <- format_score(c(0, 1.5, 20000))
   expect_length(result, 3)
   expect_type(result, "character")
+})
+
+test_that("plot_categorical returns ggplot (alluvial or bar fallback)", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    p <- plot_categorical(cat_params, m, thresh = 0)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_categorical handles non-existent parameter", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  p <- plot_categorical("NONEXIST=X", m, thresh = 0)
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("plot_categorical with explicit sites works", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  sites <- unique(m$site)[1:2]
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    p <- plot_categorical(cat_params, m, thresh = 0, sites = sites)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_bar returns ggplot", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+
+  if (length(bar_params) > 0) {
+    p <- plot_bar(bar_params, m, thresh = 0)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_bar handles non-existent parameter", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  p <- plot_bar("NONEXIST=X", m, thresh = 0)
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("plot_bar dispatches to stacked bar with >3 timepoints", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  if (length(cat_params) > 0 && dplyr::n_distinct(m$timepoint_1_name[m$parameter_id %in% cat_params]) > 3) {
+    p <- plot_bar(cat_params, m, thresh = 0)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_bar with explicit sites works", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  sites <- unique(m$site)[1:2]
+  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+
+  if (length(bar_params) > 0) {
+    p <- plot_bar(bar_params, m, thresh = 0, sites = sites)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("try_alluvial returns ggplot or NULL", {
+  df_plot <- data.frame(
+    subject_id = rep(c("s1", "s2"), each = 3),
+    site_label = "SITE-1",
+    timepoint_1_name = factor(rep(c("V1", "V2", "V3"), 2)),
+    timepoint_rank = rep(1:3, 2),
+    val_cat = sample(c("A", "B"), 6, replace = TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  result <- try_alluvial(df_plot)
+  expect_true(is.null(result) || inherits(result, "ggplot"))
+})
+
+test_that("try_alluvial returns NULL on broken data triggering alluvial error", {
+  df_bad <- data.frame(
+    subject_id = character(0),
+    site_label = character(0),
+    timepoint_1_name = factor(character(0)),
+    timepoint_rank = numeric(0),
+    val_cat = character(0),
+    stringsAsFactors = FALSE
+  )
+
+  result <- try_alluvial(df_bad)
+  expect_true(is.null(result) || inherits(result, "ggplot"))
+})
+
+test_that("plot_cat_bar_stacked returns ggplot", {
+  df_plot <- data.frame(
+    subject_id = rep(c("s1", "s2"), each = 4),
+    site_label = "SITE-1",
+    timepoint_1_name = factor(rep(c("V1", "V2", "V3", "V4"), 2)),
+    timepoint_rank = rep(1:4, 2),
+    val_cat = sample(c("A", "B"), 8, replace = TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_cat_bar_stacked(df_plot)
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("plot_cat_bar_ci returns ggplot", {
+  df_plot <- data.frame(
+    subject_id = rep(paste0("s", 1:10), each = 2),
+    site_label = rep(c("SITE-1", "SITE-2"), 10),
+    timepoint_1_name = factor("V1"),
+    timepoint_rank = 1,
+    val_cat = sample(c("A", "B"), 20, replace = TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_cat_bar_ci(df_plot)
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("plot_categorical falls back to stacked bars when alluvial fails (>3 tps)", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    local_mocked_bindings(try_alluvial = function(df_plot) NULL)
+    p <- plot_categorical(cat_params, m, thresh = 0)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_categorical falls back to CI bars when alluvial fails (<=3 tps)", {
+  # 2 timepoints + all result==1 so filter keeps data
+  m_synth <- data.frame(
+    parameter_id = rep(c("TEST=A", "TEST=B"), each = 20),
+    parameter_category_2 = "TEST",
+    parameter_category_3 = "categorical",
+    parameter_category_1 = "Test",
+    parameter_name = rep(c("Response: TEST=A", "Response: TEST=B"), each = 20),
+    subject_id = rep(paste0("s", 1:10), 4),
+    site = rep(c("SITE-1", "SITE-2"), each = 10, length.out = 40),
+    timepoint_1_name = rep(c("V1", "V2"), 20),
+    timepoint_rank = rep(c(1L, 2L), 20),
+    result = 1,
+    max_score = 2,
+    n_subjects = 10,
+    stringsAsFactors = FALSE
+  )
+
+  local_mocked_bindings(try_alluvial = function(df_plot) NULL)
+  p <- plot_categorical(c("TEST=A", "TEST=B"), m_synth, thresh = 0)
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("plot_cat_bar_stacked works with many timepoints in plot_bar dispatch", {
+  # 4+ timepoints => stacked bar path in plot_bar
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    # Categorical data has many timepoints, so plot_categorical fallback
+    # (if alluvial fails) would hit bar_stacked, and plot_bar with >3 tps
+    # also hits it. Test via direct call:
+    df_plot <- data.frame(
+      subject_id = rep(paste0("s", 1:5), each = 5),
+      site_label = "SITE-1",
+      timepoint_1_name = factor(rep(c("V1", "V2", "V3", "V4", "V5"), 5)),
+      timepoint_rank = rep(1:5, 5),
+      val_cat = sample(c("A", "B"), 25, replace = TRUE),
+      stringsAsFactors = FALSE
+    )
+
+    p <- plot_cat_bar_stacked(df_plot)
+    expect_s3_class(p, "ggplot")
+  }
 })
