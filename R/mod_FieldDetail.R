@@ -140,20 +140,25 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       lookup <- rctv_param_lookup()
       thresh <- input$thresh %||% 1.3
 
+      pid_map <- data.frame(
+        display_id = rep(lookup$display_id, lengths(lookup$parameter_ids)),
+        parameter_id = unlist(lookup$parameter_ids),
+        stringsAsFactors = FALSE
+      )
+
       site_scores <- df |>
-        dplyr::distinct(.data$site, .data$parameter_id, .data$parameter_category_2,
-                        .data$max_score)
+        dplyr::distinct(.data$site, .data$parameter_id, .data$max_score) |>
+        dplyr::left_join(pid_map, by = "parameter_id")
 
       site_scores |>
         dplyr::summarise(
           max_score = max(.data$max_score, na.rm = TRUE),
-          .by = c("site", "parameter_category_2")
+          .by = c("site", "display_id")
         ) |>
         dplyr::summarise(
           n_outlier_sites = sum(.data$max_score > .env$thresh, na.rm = TRUE),
-          .by = "parameter_category_2"
+          .by = "display_id"
         ) |>
-        dplyr::rename(display_id = "parameter_category_2") |>
         dplyr::arrange(dplyr::desc(.data$n_outlier_sites))
     })
 
@@ -195,6 +200,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       thresh <- input$thresh %||% 1.3
 
       match_row <- lookup$display_id == sel
+      shiny::req(any(match_row))
       param_ids <- lookup$parameter_ids[match_row][[1]]
 
       scores_display <- prepare_score_table_multi(res, param_ids)
@@ -246,6 +252,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       lookup <- rctv_param_lookup()
       sel <- input$selected_param
       match_row <- lookup$display_id == sel
+      shiny::req(any(match_row))
       plot_type <- lookup$plot_type[match_row]
       param_ids <- lookup$parameter_ids[match_row][[1]]
       thresh <- input$thresh %||% 0
@@ -268,6 +275,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       lookup <- rctv_param_lookup()
       sel <- input$selected_param
       match_row <- lookup$display_id == sel
+      shiny::req(any(match_row))
       param_ids <- lookup$parameter_ids[match_row][[1]]
 
       thresh <- input$thresh %||% 1.3
