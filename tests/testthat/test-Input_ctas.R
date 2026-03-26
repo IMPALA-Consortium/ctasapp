@@ -296,6 +296,49 @@ test_that("combine_ctas_input deduplicates subjects", {
   expect_equal(nrow(combined$subjects), 5)
 })
 
+test_that("inject_missingness sets NA values and renames site IDs", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+
+  injections <- data.frame(
+    site = "SITE-1",
+    lbtestcd = "ALT",
+    frac = 0.5,
+    stringsAsFactors = FALSE
+  )
+
+  result <- inject_missingness(dm, lb, injections, seed = 123)
+
+  expect_true("SITE-1_MISS_ALT" %in% result$dm$SITEID)
+  expect_false("SITE-1" %in% result$dm$SITEID)
+
+  subj_at_site <- unique(result$dm$USUBJID[result$dm$SITEID == "SITE-1_MISS_ALT"])
+  alt_rows <- result$lb$USUBJID %in% subj_at_site & result$lb$LBTESTCD == "ALT"
+  na_count <- sum(is.na(result$lb$LBSTRESN[alt_rows]))
+  expect_true(na_count > 0)
+
+  ast_rows <- result$lb$USUBJID %in% subj_at_site & result$lb$LBTESTCD == "AST"
+  expect_equal(sum(is.na(result$lb$LBSTRESN[ast_rows])), 0)
+})
+
+
+test_that("inject_missingness handles zero-fraction gracefully", {
+  dm <- make_dm(4)
+  lb <- make_lb(dm, n_visits = 3)
+
+  injections <- data.frame(
+    site = "SITE-1",
+    lbtestcd = "ALT",
+    frac = 0,
+    stringsAsFactors = FALSE
+  )
+
+  result <- inject_missingness(dm, lb, injections, seed = 42)
+  expect_true("SITE-1_MISS_ALT" %in% result$dm$SITEID)
+  expect_equal(sum(is.na(result$lb$LBSTRESN)), 0)
+})
+
+
 test_that("combine_ctas_input returns NULL untransformed when inputs lack it", {
   dm <- make_dm(3)
   lb <- make_lb(dm)

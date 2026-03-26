@@ -1,3 +1,39 @@
+# Shared colour constants --------------------------------------------------
+# Used in both DT table styling and ggplot2 point/line colouring.
+
+#' Score colour constants
+#'
+#' Breakpoints and colour vectors shared between DT table styling and
+#' ggplot2 plot colouring. `SCORE_COLORS_PLOT` uses "royalblue" for
+#' below-threshold; `SCORE_COLORS_TABLE` uses "white".
+#'
+#' @name score_colors
+#' @export
+SCORE_BREAKS <- c(1.3, 3, 5, 10)
+
+#' @rdname score_colors
+#' @export
+SCORE_COLORS_PLOT <- c("royalblue", "#fff3cd", "#ffcc80", "#ff9800", "#e65100")
+
+#' @rdname score_colors
+#' @export
+SCORE_COLORS_TABLE <- c("white", "#fff3cd", "#ffcc80", "#ff9800", "#e65100")
+
+
+#' Map a numeric score to its graduated colour
+#'
+#' Uses [findInterval()] and [SCORE_BREAKS] to bucket scores and return
+#' the matching colour from [SCORE_COLORS_PLOT].
+#'
+#' @param score Numeric vector of scores.
+#' @return Character vector of hex / named colours.
+#' @export
+score_to_color <- function(score) {
+  idx <- findInterval(score, SCORE_BREAKS) + 1L
+  SCORE_COLORS_PLOT[idx]
+}
+
+
 #' Plot numeric timeseries for one or more parameters
 #'
 #' Adapted from applytsoa's `report_plot_measure_val_numeric()` / `plot_num()`.
@@ -69,7 +105,7 @@ plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
     patchwork::plot_annotation(
       title = title_str,
       subtitle = paste0(
-        "orange: sites with outlier score > ", thresh,
+        "warm colors: sites with outlier score > ", thresh, " (per parameter)",
         "\nblue: sites at or below threshold"
       )
     ) +
@@ -92,8 +128,9 @@ plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
 #' @keywords internal
 plot_timeseries_panel <- function(df, thresh, sites, has_range_norm = FALSE) {
 
+  # Per-parameter max_score determines bland/outlier colouring (applytsoa style)
   df_bland <- df |>
-    dplyr::filter(.data$max_score_site <= .env$thresh) |>
+    dplyr::filter(.data$max_score <= .env$thresh) |>
     dplyr::mutate(
       upper_thresh = stats::quantile(.data$result, 0.75, na.rm = TRUE) +
         5 * stats::IQR(.data$result, na.rm = TRUE),
@@ -124,8 +161,8 @@ plot_timeseries_panel <- function(df, thresh, sites, has_range_norm = FALSE) {
       ),
       label = forcats::fct_reorder(.data$label, .data$max_score_site),
       label = forcats::fct_rev(.data$label),
-      pt_color = ifelse(.data$max_score_site > .env$thresh, "orange1", "royalblue"),
-      smooth_color = ifelse(.data$max_score_site > .env$thresh, "khaki3", "skyblue2")
+      pt_color = score_to_color(.data$max_score),
+      smooth_color = score_to_color(.data$max_score)
     )
 
   has_values <- !all(is.na(df_out$result))

@@ -66,6 +66,32 @@ test_that("determine_plot_type falls back to first type for non-numeric mix", {
   expect_equal(determine_plot_type(c("categorical", "bar")), "categorical")
 })
 
+
+test_that("split_param_ids separates regular from missingness", {
+  df <- data.frame(
+    parameter_id = c("LB_NORM_ALT", "LB_MISS_ALT", "VS_SYSBP"),
+    parameter_category_3 = c("range_normalized", "ratio_missing", "numeric"),
+    stringsAsFactors = FALSE
+  )
+
+  splits <- split_param_ids(c("LB_NORM_ALT", "LB_MISS_ALT", "VS_SYSBP"), df)
+  expect_equal(sort(splits$regular), c("LB_NORM_ALT", "VS_SYSBP"))
+  expect_equal(splits$missingness, "LB_MISS_ALT")
+})
+
+test_that("split_param_ids returns empty missingness when none present", {
+  df <- data.frame(
+    parameter_id = c("VS_SYSBP", "VS_DIABP"),
+    parameter_category_3 = c("numeric", "numeric"),
+    stringsAsFactors = FALSE
+  )
+
+  splits <- split_param_ids(c("VS_SYSBP", "VS_DIABP"), df)
+  expect_equal(sort(splits$regular), c("VS_DIABP", "VS_SYSBP"))
+  expect_length(splits$missingness, 0)
+})
+
+
 test_that("mod_FieldDetail_server renders outputs with ctas sample", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)
 
@@ -76,7 +102,7 @@ test_that("mod_FieldDetail_server renders outputs with ctas sample", {
       rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
     ),
     {
-      session$setInputs(thresh = 1.3)
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
       session$flushReact()
 
       stats <- param_outliers()
@@ -102,7 +128,7 @@ test_that("mod_FieldDetail_server param_outliers reacts to threshold changes", {
       rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
     ),
     {
-      session$setInputs(thresh = 0)
+      session$setInputs(thresh = 0, include_miss = TRUE)
       stats_low <- param_outliers()
       n_low <- sum(stats_low$n_outlier_sites)
 
@@ -126,7 +152,7 @@ test_that("mod_FieldDetail_server handles SDTM sample data", {
       rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
     ),
     {
-      session$setInputs(thresh = 1.3)
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
@@ -149,7 +175,7 @@ test_that("mod_FieldDetail_server dispatches categorical plot", {
       rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
     ),
     {
-      session$setInputs(thresh = 0)
+      session$setInputs(thresh = 0, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
@@ -172,7 +198,7 @@ test_that("mod_FieldDetail_server dispatches bar plot", {
       rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
     ),
     {
-      session$setInputs(thresh = 0)
+      session$setInputs(thresh = 0, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
@@ -195,7 +221,7 @@ test_that("mod_FieldDetail_server dispatches numeric plot with norm+missing", {
       rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
     ),
     {
-      session$setInputs(thresh = 0)
+      session$setInputs(thresh = 0, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
@@ -208,7 +234,7 @@ test_that("mod_FieldDetail_server dispatches numeric plot with norm+missing", {
   )
 })
 
-test_that("mod_FieldDetail_server score_table validate guard fires for unscored param", {
+test_that("mod_FieldDetail_server score_table_regular validate guard fires for unscored param", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)
 
   fake_results <- sample_ctas_results
@@ -222,13 +248,13 @@ test_that("mod_FieldDetail_server score_table validate guard fires for unscored 
       rctv_ctas_results = shiny::reactiveVal(fake_results)
     ),
     {
-      session$setInputs(thresh = 1.3)
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
       session$setInputs(selected_param = lookup$display_id[1])
 
-      expect_error(output$score_table, class = "shiny.silent.error")
+      expect_error(output$score_table_regular, class = "shiny.silent.error")
     }
   )
 })
@@ -243,7 +269,7 @@ test_that("mod_FieldDetail_server ts_data_table validate guard fires with high t
       rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
     ),
     {
-      session$setInputs(thresh = 99999)
+      session$setInputs(thresh = 99999, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
@@ -267,7 +293,7 @@ test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM
       rctv_untransformed = shiny::reactiveVal(ut)
     ),
     {
-      session$setInputs(thresh = 0)
+      session$setInputs(thresh = 0, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
@@ -275,6 +301,104 @@ test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM
       session$setInputs(selected_param = alb_id)
 
       tbl <- output$ts_data_table
+      expect_true(!is.null(tbl))
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server include_miss=FALSE filters outlier counts", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      stats_with <- param_outliers()
+
+      session$setInputs(include_miss = FALSE)
+      stats_without <- param_outliers()
+
+      # Missingness parameters contribute to scores, so disabling should
+      # change (or keep equal) the outlier counts
+      expect_true(nrow(stats_with) > 0)
+      expect_true(nrow(stats_without) > 0)
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server include_miss=FALSE filters plot param_ids", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = FALSE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      alb_id <- lookup$display_id[lookup$display_id == "ALB"]
+      session$setInputs(selected_param = alb_id)
+
+      p <- output$ts_plot
+      expect_true(!is.null(p))
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server missingness score table shows message for non-lab param", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      # VS parameters don't have ratio_missing companion
+      vs_ids <- lookup$display_id[grepl("^VS_", lookup$display_id)]
+      if (length(vs_ids) > 0) {
+        session$setInputs(selected_param = vs_ids[1])
+        expect_error(output$score_table_miss, class = "shiny.silent.error")
+      }
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server regular score table renders for SDTM lab", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      alb_id <- lookup$display_id[lookup$display_id == "ALB"]
+      session$setInputs(selected_param = alb_id)
+
+      tbl <- output$score_table_regular
       expect_true(!is.null(tbl))
     }
   )

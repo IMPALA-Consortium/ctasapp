@@ -8,10 +8,19 @@ data("lb", package = "pharmaversesdtm")
 data("vs", package = "pharmaversesdtm")
 data("rs_onco", package = "pharmaversesdtm")
 
-labs <- Input_Labs(dm, lb)
-vs_input <- Input_VS(dm, vs)
-rs <- Input_RS(dm, rs_onco)
-bmi <- Input_BMI(dm, vs)
+injections <- data.frame(
+  site = c("701", "710", "704", "708", "709", "716"),
+  lbtestcd = c("ALT", "ALT", "CREAT", "CREAT", "GLUC", "GLUC"),
+  frac = rep(0.4, 6),
+  stringsAsFactors = FALSE
+)
+
+modified <- inject_missingness(dm, lb, injections, seed = 42)
+
+labs <- Input_Labs(modified$dm, modified$lb)
+vs_input <- Input_VS(modified$dm, vs)
+rs <- Input_RS(modified$dm, rs_onco)
+bmi <- Input_BMI(modified$dm, vs)
 
 sample_sdtm_data <- combine_ctas_input(labs, vs_input, rs, bmi)
 

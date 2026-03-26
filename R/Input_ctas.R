@@ -1,6 +1,46 @@
 # gsm.core-style Input helpers for converting SDTM domains to ctas input.
 # Designed for future extraction to a gsm.ctas package.
 
+
+#' Inject random missingness into LB data for specific site/parameter combos
+#'
+#' Useful for creating demo datasets that showcase the missingness ratio
+#' visualization. Affected sites are renamed with a `_MISS_<LBTESTCD>` suffix
+#' so they are visually identifiable in the app.
+#'
+#' @param dfDM Data frame with SDTM DM columns (must include USUBJID, SITEID).
+#' @param dfLB Data frame with SDTM LB columns (must include USUBJID, LBTESTCD, LBSTRESN).
+#' @param injections Data frame with columns `site` (character), `lbtestcd`
+#'   (character), and `frac` (numeric 0-1, fraction of values to set NA).
+#' @param seed Integer seed for reproducibility.
+#'
+#' @return A list with elements `dm` and `lb` containing the modified data frames.
+#' @export
+inject_missingness <- function(dfDM, dfLB, injections, seed = 42) {
+  set.seed(seed)
+
+  for (i in seq_len(nrow(injections))) {
+    site_id <- injections$site[i]
+    testcd <- injections$lbtestcd[i]
+    frac <- injections$frac[i]
+
+    subj_at_site <- unique(dfDM$USUBJID[dfDM$SITEID == site_id])
+    target_rows <- which(
+      dfLB$USUBJID %in% subj_at_site & dfLB$LBTESTCD == testcd
+    )
+    n_to_na <- round(length(target_rows) * frac)
+    if (n_to_na > 0) {
+      na_rows <- sample(target_rows, n_to_na)
+      dfLB$LBSTRESN[na_rows] <- NA_real_
+    }
+
+    new_id <- paste0(site_id, "_MISS_", testcd)
+    dfDM$SITEID[dfDM$SITEID == site_id] <- new_id
+  }
+
+  list(dm = dfDM, lb = dfLB)
+}
+
 #' Build subject table from DM domain
 #'
 #' @param dfDM Data frame with SDTM DM columns (USUBJID, SITEID, COUNTRY, etc.).
