@@ -25,5 +25,6 @@ timeseries data frame (NULL for ctas sample data).}
 Renders a clickable list of parameters in the sidebar. On selection,
 shows pill-tabbed score tables (regular + missingness), the timeseries
 plot, and a raw data table for outlier sites. Auto-detects plot type
-from \code{parameter_category_3}.
+from \code{parameter_category_3}. Supports feature sub-selection via
+checkbox group.
 }

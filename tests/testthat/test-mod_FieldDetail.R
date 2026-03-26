@@ -37,6 +37,11 @@ test_that("build_param_lookup groups labs by parameter_category_2", {
   # Bar groups
   wt <- lookup[lookup$display_id == "VS_WEIGHT_CAT", ]
   expect_equal(wt$plot_type, "bar")
+
+  # cat3_values present
+  expect_true("cat3_values" %in% names(lookup))
+  expect_equal(sort(alb$cat3_values[[1]]), c("range_normalized", "ratio_missing"))
+  expect_equal(rs$cat3_values[[1]], "categorical")
 })
 
 test_that("build_param_lookup splits independent params with same category_2", {
@@ -400,6 +405,55 @@ test_that("mod_FieldDetail_server regular score table renders for SDTM lab", {
 
       tbl <- output$score_table_regular
       expect_true(!is.null(tbl))
+    }
+  )
+})
+
+
+test_that("plot_type_icon returns flask for range_normalized", {
+  expect_equal(plot_type_icon("numeric", c("range_normalized", "ratio_missing")), "flask")
+  expect_equal(plot_type_icon("numeric", "range_normalized"), "flask")
+})
+
+test_that("plot_type_icon returns chart-line for plain numeric", {
+  expect_equal(plot_type_icon("numeric", "numeric"), "chart-line")
+})
+
+test_that("plot_type_icon returns chart-bar for bar", {
+  expect_equal(plot_type_icon("bar", "bar"), "chart-bar")
+})
+
+test_that("plot_type_icon returns water for categorical", {
+  expect_equal(plot_type_icon("categorical", "categorical"), "water")
+})
+
+
+test_that("mod_FieldDetail_server feature selection filters scores", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  all_feats <- sort(unique(sample_sdtm_results$site_scores$feature))
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(
+        thresh = 1.3,
+        include_miss = TRUE,
+        selected_features = all_feats
+      )
+      session$flushReact()
+
+      mf_all <- rctv_measures_feat()
+      expect_equal(mf_all$max_score, m$max_score)
+
+      session$setInputs(selected_features = all_feats[1])
+      session$flushReact()
+
+      mf_one <- rctv_measures_feat()
+      expect_true(all(mf_one$max_score <= m$max_score))
     }
   )
 })

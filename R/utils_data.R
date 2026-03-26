@@ -97,6 +97,43 @@ prepare_score_table <- function(ctas_results, parameter_id) {
 }
 
 
+#' Recompute max_score in measures using a subset of ctas features
+#'
+#' Recalculates `max_score` per (site, parameter_id) from
+#' `ctas_results$site_scores`, optionally filtering to a subset of features.
+#' Returns the measures data frame with an updated `max_score` column.
+#'
+#' @param measures Data frame as returned by [prepare_measures()].
+#' @param ctas_results List as returned by [ctas::process_a_study()].
+#' @param features Character vector of feature names to include, or NULL for all.
+#'
+#' @return A data frame identical to `measures` but with recalculated `max_score`.
+#' @export
+recompute_max_score <- function(measures, ctas_results, features = NULL) {
+  scores <- ctas_results$site_scores |>
+    dplyr::left_join(
+      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    )
+
+  if (!is.null(features)) {
+    scores <- scores |>
+      dplyr::filter(.data$feature %in% .env$features)
+  }
+
+  new_scores <- scores |>
+    dplyr::summarise(
+      max_score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      .by = c("site", "parameter_id")
+    )
+
+  measures |>
+    dplyr::select(-"max_score") |>
+    dplyr::left_join(new_scores, by = c("site", "parameter_id")) |>
+    dplyr::mutate(max_score = tidyr::replace_na(.data$max_score, 0))
+}
+
+
 #' Prepare wide score table for multiple parameter IDs
 #'
 #' Like [prepare_score_table()] but accepts a vector of parameter IDs, pooling
@@ -104,16 +141,25 @@ prepare_score_table <- function(ctas_results, parameter_id) {
 #'
 #' @param ctas_results List as returned by [ctas::process_a_study()].
 #' @param parameter_ids Character vector of parameter IDs.
+#' @param features Character vector of feature names to include, or NULL for all.
 #'
 #' @return A data frame with columns: site, one per feature, max_score.
 #' @export
-prepare_score_table_multi <- function(ctas_results, parameter_ids) {
+prepare_score_table_multi <- function(ctas_results, parameter_ids,
+                                      features = NULL) {
   scores_long <- ctas_results$site_scores |>
     dplyr::left_join(
       ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
       by = "timeseries_id"
     ) |>
-    dplyr::filter(.data$parameter_id %in% .env$parameter_ids) |>
+    dplyr::filter(.data$parameter_id %in% .env$parameter_ids)
+
+  if (!is.null(features)) {
+    scores_long <- scores_long |>
+      dplyr::filter(.data$feature %in% .env$features)
+  }
+
+  scores_long <- scores_long |>
     dplyr::summarise(
       score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
       .by = c("site", "feature")
