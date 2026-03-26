@@ -295,3 +295,17 @@ test_that("combine_ctas_input deduplicates subjects", {
   combined <- combine_ctas_input(input_labs, input_vs)
   expect_equal(nrow(combined$subjects), 5)
 })
+
+test_that("combine_ctas_input returns NULL untransformed when inputs lack it", {
+  dm <- make_dm(3)
+  lb <- make_lb(dm)
+  input_labs <- Input_Labs(dm, lb)
+  input_labs$untransformed <- NULL
+
+  vs <- make_vs(dm)
+  input_vs <- Input_VS(dm, vs)
+  input_vs$untransformed <- NULL
+
+  combined <- combine_ctas_input(input_labs, input_vs)
+  expect_null(combined$untransformed)
+})
