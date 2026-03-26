@@ -207,3 +207,49 @@ test_that("mod_FieldDetail_server dispatches numeric plot with norm+missing", {
     }
   )
 })
+
+test_that("mod_FieldDetail_server score_table validate guard fires for unscored param", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+
+  fake_results <- sample_ctas_results
+  fake_results$timeseries <- fake_results$timeseries[0, ]
+  fake_results$site_scores <- fake_results$site_scores[0, ]
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(fake_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      session$setInputs(selected_param = lookup$display_id[1])
+
+      expect_error(output$score_table, class = "shiny.silent.error")
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server ts_data_table validate guard fires with high threshold", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
+    ),
+    {
+      session$setInputs(thresh = 99999)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      session$setInputs(selected_param = lookup$display_id[1])
+
+      expect_error(output$ts_data_table, class = "shiny.silent.error")
+    }
+  )
+})

@@ -195,6 +195,10 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
       param_ids <- lookup$parameter_ids[match_row][[1]]
 
       scores_display <- prepare_score_table_multi(res, param_ids)
+      shiny::validate(shiny::need(
+        nrow(scores_display) > 0,
+        "No outlier scores available for this parameter (too few timepoints for ctas to compute features)."
+      ))
       scores_display$outlier <- ifelse(scores_display$max_score > thresh, "yes", "no")
 
       feature_cols <- setdiff(names(scores_display), c("site", "max_score", "outlier"))
@@ -265,6 +269,10 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
 
       thresh <- input$thresh %||% 1.3
       ts_data <- prepare_ts_data_multi(df, param_ids, thresh)
+      shiny::validate(shiny::need(
+        nrow(ts_data) > 0,
+        "No outlier site data to display (no sites exceed the threshold for this parameter)."
+      ))
 
       DT::datatable(
         ts_data,

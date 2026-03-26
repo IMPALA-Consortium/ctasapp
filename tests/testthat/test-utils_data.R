@@ -130,3 +130,22 @@ test_that("prepare_ts_data_multi returns empty with high threshold", {
   td <- prepare_ts_data_multi(m, "param1", thresh = 99999)
   expect_equal(nrow(td), 0)
 })
+
+test_that("VS_HEIGHT has scores in SDTM sample results", {
+  ts <- sample_sdtm_results$timeseries
+  expect_true("VS_HEIGHT" %in% ts$parameter_id)
+
+  st <- prepare_score_table_multi(sample_sdtm_results, "VS_HEIGHT")
+  expect_true(nrow(st) > 0)
+  expect_true(any(st$max_score > 0))
+})
+
+test_that("VS_WEIGHT_CAT has scores in SDTM sample results", {
+  ts <- sample_sdtm_results$timeseries
+  wt_ids <- ts$parameter_id[grepl("^VS_WEIGHT_CAT=", ts$parameter_id)]
+  expect_true(length(wt_ids) > 0)
+
+  st <- prepare_score_table_multi(sample_sdtm_results, unique(wt_ids))
+  expect_true(nrow(st) > 0)
+  expect_true(any(st$max_score > 0))
+})

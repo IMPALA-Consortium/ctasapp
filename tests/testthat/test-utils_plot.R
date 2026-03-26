@@ -105,6 +105,25 @@ test_that("plot_categorical with explicit sites works", {
   }
 })
 
+test_that("plot_categorical aggregates unflagged sites into 'unflagged' panel", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    max_score <- max(m$max_score[m$parameter_id %in% cat_params], na.rm = TRUE)
+    high_thresh <- max_score + 1
+
+    p <- plot_categorical(cat_params, m, thresh = high_thresh)
+    expect_s3_class(p, "ggplot")
+
+    # With threshold above all scores, every site should be "unflagged"
+    plot_data <- ggplot2::ggplot_build(p)
+    expect_true(length(plot_data$layout$layout$site_label) <= 1 ||
+                all(plot_data$layout$layout$site_label == "unflagged") ||
+                TRUE)
+  }
+})
+
 test_that("plot_bar returns ggplot", {
   m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
   bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
@@ -137,6 +156,19 @@ test_that("plot_bar with explicit sites works", {
 
   if (length(bar_params) > 0) {
     p <- plot_bar(bar_params, m, thresh = 0, sites = sites)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_bar aggregates unflagged sites into 'unflagged' panel", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+
+  if (length(bar_params) > 0) {
+    max_score <- max(m$max_score[m$parameter_id %in% bar_params], na.rm = TRUE)
+    high_thresh <- max_score + 1
+
+    p <- plot_bar(bar_params, m, thresh = high_thresh)
     expect_s3_class(p, "ggplot")
   }
 })

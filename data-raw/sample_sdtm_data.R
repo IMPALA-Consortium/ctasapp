@@ -35,7 +35,7 @@ sample_sdtm_results <- process_a_study(
   custom_timeseries = sample_sdtm_data$custom_timeseries,
   custom_reference_groups = sample_sdtm_data$custom_reference_groups,
   default_timeseries_features_to_calculate = feats,
-  default_minimum_timepoints_per_series = 3,
+  default_minimum_timepoints_per_series = 1,
   default_minimum_subjects_per_series = 3,
   default_max_share_missing_timepoints_per_series = 0.5,
   default_generate_change_from_baseline = FALSE,

@@ -235,15 +235,13 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
       dplyr::pull(.data$site)
   }
 
-  # Group sites: flagged get asterisk, unflagged collapse to "unflagged"
+  # Group sites: above threshold get asterisk, all others collapse to "unflagged"
   df_gr <- df |>
-    dplyr::filter(.data$max_score_site > .env$thresh | .data$site %in% .env$sites) |>
     dplyr::mutate(
-      site_label = dplyr::case_when(
-        .data$site %in% .env$sites & .data$max_score_site > .env$thresh ~
-          paste(.data$site, "*"),
-        .data$site %in% .env$sites ~ .data$site,
-        TRUE ~ "unflagged"
+      site_label = ifelse(
+        .data$max_score_site > .env$thresh,
+        paste(.data$site, "*"),
+        "unflagged"
       )
     )
 
@@ -427,11 +425,11 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
   }
 
   df_gr <- df |>
-    dplyr::filter(.data$site %in% .env$sites) |>
     dplyr::mutate(
-      site_label = dplyr::case_when(
-        .data$max_score_site > .env$thresh ~ paste(.data$site, "*"),
-        TRUE ~ .data$site
+      site_label = ifelse(
+        .data$max_score_site > .env$thresh,
+        paste(.data$site, "*"),
+        "unflagged"
       ),
       timepoint_1_name = arrange_timepoints(.data$timepoint_1_name)
     ) |>
