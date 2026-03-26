@@ -10,9 +10,11 @@ mod_DataInput_server(id)
 \item{id}{Module namespace ID.}
 }
 \value{
-Named list with \code{measures} and \code{ctas_results} reactive expressions.
+Named list with \code{measures}, \code{ctas_results}, and \code{untransformed}
+reactive expressions.
 }
 \description{
-Returns a named list of two reactives: \code{measures} (the prepared data frame)
-and \code{ctas_results} (the raw ctas output list for per-feature score access).
+Returns a named list of three reactives: \code{measures} (the prepared data frame),
+\code{ctas_results} (the raw ctas output list for per-feature score access), and
+\code{untransformed} (pre-transformation timeseries data, NULL for ctas sample).
 }

@@ -253,3 +253,29 @@ test_that("mod_FieldDetail_server ts_data_table validate guard fires with high t
     }
   )
 })
+
+
+test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_untransformed = shiny::reactiveVal(ut)
+    ),
+    {
+      session$setInputs(thresh = 0)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      alb_id <- lookup$display_id[lookup$display_id == "ALB"]
+      session$setInputs(selected_param = alb_id)
+
+      tbl <- output$ts_data_table
+      expect_true(!is.null(tbl))
+    }
+  )
+})

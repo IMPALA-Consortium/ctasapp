@@ -4,7 +4,12 @@
 \alias{mod_FieldDetail_server}
 \title{Field Detail Module - Server}
 \usage{
-mod_FieldDetail_server(id, rctv_measures, rctv_ctas_results)
+mod_FieldDetail_server(
+  id,
+  rctv_measures,
+  rctv_ctas_results,
+  rctv_untransformed = shiny::reactiveVal(NULL)
+)
 }
 \arguments{
 \item{id}{Module namespace ID.}
@@ -12,6 +17,9 @@ mod_FieldDetail_server(id, rctv_measures, rctv_ctas_results)
 \item{rctv_measures}{Reactive expression returning the measures data frame.}
 
 \item{rctv_ctas_results}{Reactive expression returning the raw ctas results list.}
+
+\item{rctv_untransformed}{Reactive expression returning the untransformed
+timeseries data frame (NULL for ctas sample data).}
 }
 \description{
 Renders a clickable list of parameters in the sidebar. On selection,

@@ -13,7 +13,7 @@ Input_Labs(dfDM, dfLB)
 }
 \value{
 A list with elements \code{data}, \code{subjects}, \code{parameters} matching the
-ctas input schema.
+ctas input schema, plus \code{untransformed} with original lab values and ranges.
 }
 \description{
 Produces range-normalized lab timeseries and ratio-missing timeseries for

@@ -131,6 +131,69 @@ test_that("prepare_ts_data_multi returns empty with high threshold", {
   expect_equal(nrow(td), 0)
 })
 
+test_that("prepare_ts_data_multi joins untransformed for numeric labs", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+
+  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT|^LB_MISS_ALT", m$parameter_id)])
+  td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut)
+
+  expect_s3_class(td, "data.frame")
+  expect_true("original_value" %in% names(td))
+  expect_true("lower" %in% names(td))
+  expect_true("upper" %in% names(td))
+  expect_false("original_category" %in% names(td))
+})
+
+test_that("prepare_ts_data_multi joins untransformed for categorical", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+
+  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  td <- prepare_ts_data_multi(m, cat_params, thresh = 0, untransformed = ut)
+
+  expect_s3_class(td, "data.frame")
+  expect_true("original_category" %in% names(td))
+  expect_false("original_value" %in% names(td))
+  expect_false("lower" %in% names(td))
+})
+
+test_that("prepare_ts_data_multi joins untransformed for VS (no ranges)", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+
+  vs_params <- unique(m$parameter_id[grepl("^VS_SYSBP", m$parameter_id)])
+  td <- prepare_ts_data_multi(m, vs_params, thresh = 0, untransformed = ut)
+
+  expect_s3_class(td, "data.frame")
+  expect_true("original_value" %in% names(td))
+  expect_false("lower" %in% names(td))
+  expect_false("upper" %in% names(td))
+  expect_false("original_category" %in% names(td))
+})
+
+test_that("prepare_ts_data_multi with NULL untransformed shows result only", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT", m$parameter_id)])
+  td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = NULL)
+
+  expect_true("result" %in% names(td))
+  expect_false("original_value" %in% names(td))
+  expect_false("lower" %in% names(td))
+})
+
+test_that("prepare_ts_data_multi preserves row count with untransformed", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+
+  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT|^LB_MISS_ALT", m$parameter_id)])
+  td_with <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut)
+  td_without <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = NULL)
+
+  expect_equal(nrow(td_with), nrow(td_without))
+})
+
 test_that("VS_HEIGHT has scores in SDTM sample results", {
   ts <- sample_sdtm_results$timeseries
   expect_true("VS_HEIGHT" %in% ts$parameter_id)

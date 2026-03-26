@@ -3,15 +3,17 @@ test_that("mod_DataInput_ui returns a shiny tag", {
   expect_true(inherits(ui, "shiny.tag") || inherits(ui, "shiny.tag.list"))
 })
 
-test_that("mod_DataInput_server returns list with measures and ctas_results", {
+test_that("mod_DataInput_server returns list with measures, ctas_results, and untransformed", {
   shiny::testServer(mod_DataInput_server, {
     returned <- session$getReturned()
     expect_type(returned, "list")
     expect_true("measures" %in% names(returned))
     expect_true("ctas_results" %in% names(returned))
+    expect_true("untransformed" %in% names(returned))
 
     expect_null(returned$measures())
     expect_null(returned$ctas_results())
+    expect_null(returned$untransformed())
   })
 })
 
@@ -30,6 +32,8 @@ test_that("mod_DataInput_server loads ctas sample data on button click", {
     expect_type(res, "list")
     expect_true("site_scores" %in% names(res))
     expect_true("timeseries" %in% names(res))
+
+    expect_null(returned$untransformed())
   })
 })
 
@@ -40,12 +44,18 @@ test_that("mod_DataInput_server loads SDTM sample data on button click", {
     returned <- session$getReturned()
     m <- returned$measures()
     res <- returned$ctas_results()
+    ut <- returned$untransformed()
 
     expect_s3_class(m, "data.frame")
     expect_true(nrow(m) > 0)
 
     cats <- unique(m$parameter_category_3)
     expect_true("categorical" %in% cats || "bar" %in% cats || "range_normalized" %in% cats)
+
+    expect_s3_class(ut, "data.frame")
+    expect_true(nrow(ut) > 0)
+    expect_true(all(c("subject_id", "parameter_category_2", "timepoint_1_name",
+                       "original_value") %in% names(ut)))
   })
 })
 

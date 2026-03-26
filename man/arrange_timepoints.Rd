@@ -10,10 +10,12 @@ arrange_timepoints(x)
 \item{x}{Character vector of visit names.}
 }
 \value{
-A factor with levels ordered: screening, sorted others, discontinuation.
+A factor with levels ordered: screening, baseline, numbered visits,
+discontinuation.
 }
 \description{
-Orders factor levels so that screening visits come first, discontinuation
-visits come last, and all others are sorted alphabetically in between.
-Ported from applytsoa's \code{report_arrange_timepoints()}.
+Orders factor levels: screening first, then baseline, then remaining visits
+in natural numeric order (so "WEEK 2" < "WEEK 12"), then discontinuation
+last. Uses \code{\link[=sort_visits_natural]{sort_visits_natural()}} for the middle group to avoid lexical
+misordering of numbered visit names.
 }

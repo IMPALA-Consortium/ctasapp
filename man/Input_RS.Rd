@@ -14,7 +14,8 @@ Input_RS(dfDM, dfRS, strTestCD = "OVRLRESP")
 \item{strTestCD}{Test code to filter on. Default: \code{"OVRLRESP"}.}
 }
 \value{
-A list with elements \code{data}, \code{subjects}, \code{parameters}.
+A list with elements \code{data}, \code{subjects}, \code{parameters}, plus
+\code{untransformed} with original categorical response values.
 }
 \description{
 One-hot encodes \code{RSORRES} for the overall response test, producing one

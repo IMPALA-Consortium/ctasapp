@@ -8,7 +8,7 @@ recalculate_timepoint_rank(df)
 }
 \arguments{
 \item{df}{Data frame with at least columns \code{subject_id}, \code{parameter_id},
-\code{timepoint_1_name}, and \code{timepoint_rank}.}
+\code{timepoint_1_name}, and \code{timepoint_rank} (original numeric visit number).}
 }
 \value{
 The input data frame with \code{timepoint_rank} replaced by recalculated
@@ -16,7 +16,9 @@ positional integers.
 }
 \description{
 Computes \code{row_number()} within each \verb{(subject_id, parameter_id)} group,
-ordered by \code{timepoint_1_name}. This replaces raw \code{VISITNUM} values with
-a meaningful sequential rank suitable for x-axis plotting.
-Matches applytsoa's \code{tbl_measures.R} rank calculation.
+ordered first by the original numeric \code{timepoint_rank} (typically VISITNUM)
+and then by \code{timepoint_1_name} as a tiebreaker. This produces a clean
+1, 2, 3, ... sequence that respects the clinical visit ordering rather
+than relying on lexical sorting of visit names (which miorders e.g.
+"WEEK 12" before "WEEK 2").
 }

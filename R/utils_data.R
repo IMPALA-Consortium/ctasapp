@@ -140,28 +140,73 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids) {
 
 #' Prepare timeseries data for outlier sites (multiple parameters)
 #'
-#' Like [prepare_ts_data()] but accepts a vector of parameter IDs.
+#' Like [prepare_ts_data()] but accepts a vector of parameter IDs. When
+#' `untransformed` is supplied (non-NULL), joins in the original pre-transformation
+#' values (original_value, lower, upper, original_category) keyed on
+#' `subject_id + parameter_category_2 + timepoint_1_name`.
 #'
 #' @param measures Data frame as returned by [prepare_measures()].
 #' @param parameter_ids Character vector of parameter IDs.
 #' @param thresh Numeric threshold for outlier flagging.
+#' @param untransformed Optional data frame with columns subject_id,
+#'   parameter_category_2, timepoint_1_name, original_value, lower, upper,
+#'   original_category. Pass NULL (default) to show transformed result only.
 #'
 #' @return A data frame sorted by site, subject_id, timepoint_rank.
 #' @export
-prepare_ts_data_multi <- function(measures, parameter_ids, thresh) {
-  measures |>
+prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
+                                  untransformed = NULL) {
+  filtered <- measures |>
     dplyr::filter(
       .data$parameter_id %in% .env$parameter_ids,
       .data$max_score > .env$thresh
-    ) |>
-    dplyr::select(
-      "site", "subject_id", "parameter_id", "timepoint_rank",
-      "timepoint_1_name", "result", "parameter_name", "max_score"
-    ) |>
-    dplyr::mutate(
-      result = round(.data$result, 3),
-      max_score = round(.data$max_score, 2)
-    ) |>
+    )
+
+  if (!is.null(untransformed) && nrow(filtered) > 0) {
+    display_cats <- unique(filtered$parameter_category_2)
+    ut_sub <- untransformed |>
+      dplyr::filter(.data$parameter_category_2 %in% .env$display_cats) |>
+      dplyr::distinct(
+        .data$subject_id, .data$parameter_category_2,
+        .data$timepoint_1_name, .keep_all = TRUE
+      )
+
+    filtered <- filtered |>
+      dplyr::left_join(
+        ut_sub,
+        by = c("subject_id", "parameter_category_2", "timepoint_1_name")
+      )
+
+    ut_cols <- c("original_value", "lower", "upper", "original_category")
+    result <- filtered |>
+      dplyr::select(
+        "site", "subject_id", "parameter_id", "timepoint_rank",
+        "timepoint_1_name", dplyr::all_of(ut_cols),
+        "result", "parameter_name", "max_score"
+      ) |>
+      dplyr::mutate(
+        original_value = round(.data$original_value, 3),
+        lower = round(.data$lower, 3),
+        upper = round(.data$upper, 3),
+        result = round(.data$result, 3),
+        max_score = round(.data$max_score, 2)
+      )
+
+    all_na <- vapply(result[ut_cols], function(x) all(is.na(x)), logical(1))
+    result <- result[, !names(result) %in% names(all_na[all_na]), drop = FALSE]
+  } else {
+    result <- filtered |>
+      dplyr::select(
+        "site", "subject_id", "parameter_id", "timepoint_rank",
+        "timepoint_1_name", "result", "parameter_name", "max_score"
+      ) |>
+      dplyr::mutate(
+        result = round(.data$result, 3),
+        max_score = round(.data$max_score, 2)
+      )
+  }
+
+  result |>
     dplyr::arrange(.data$site, .data$subject_id, .data$timepoint_rank)
 }
 

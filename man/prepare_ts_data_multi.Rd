@@ -4,7 +4,7 @@
 \alias{prepare_ts_data_multi}
 \title{Prepare timeseries data for outlier sites (multiple parameters)}
 \usage{
-prepare_ts_data_multi(measures, parameter_ids, thresh)
+prepare_ts_data_multi(measures, parameter_ids, thresh, untransformed = NULL)
 }
 \arguments{
 \item{measures}{Data frame as returned by \code{\link[=prepare_measures]{prepare_measures()}}.}
@@ -12,10 +12,17 @@ prepare_ts_data_multi(measures, parameter_ids, thresh)
 \item{parameter_ids}{Character vector of parameter IDs.}
 
 \item{thresh}{Numeric threshold for outlier flagging.}
+
+\item{untransformed}{Optional data frame with columns subject_id,
+parameter_category_2, timepoint_1_name, original_value, lower, upper,
+original_category. Pass NULL (default) to show transformed result only.}
 }
 \value{
 A data frame sorted by site, subject_id, timepoint_rank.
 }
 \description{
-Like \code{\link[=prepare_ts_data]{prepare_ts_data()}} but accepts a vector of parameter IDs.
+Like \code{\link[=prepare_ts_data]{prepare_ts_data()}} but accepts a vector of parameter IDs. When
+\code{untransformed} is supplied (non-NULL), joins in the original pre-transformation
+values (original_value, lower, upper, original_category) keyed on
+\code{subject_id + parameter_category_2 + timepoint_1_name}.
 }

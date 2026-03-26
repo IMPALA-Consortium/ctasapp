@@ -7,15 +7,18 @@
 combine_ctas_input(...)
 }
 \arguments{
-\item{...}{One or more lists with elements \code{data}, \code{subjects}, \code{parameters}.}
+\item{...}{One or more lists with elements \code{data}, \code{subjects}, \code{parameters},
+and optionally \code{untransformed}.}
 }
 \value{
 A list with elements: \code{data}, \code{subjects}, \code{parameters},
-\code{custom_timeseries}, \code{custom_reference_groups}.
+\code{custom_timeseries}, \code{custom_reference_groups}, and \code{untransformed}
+(NULL when no inputs contain untransformed data).
 }
 \description{
 Takes one or more ctas input lists (each with \code{data}, \code{subjects},
 \code{parameters}) and merges them into a single ctas-compatible list.
 Deduplicates subjects and adds empty \code{custom_timeseries} and
-\code{custom_reference_groups} tibbles.
+\code{custom_reference_groups} tibbles. If inputs include \code{untransformed}
+elements, these are row-bound into a combined \code{untransformed} data frame.
 }

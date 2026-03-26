@@ -68,6 +68,23 @@ test_that("recalculate_timepoint_rank computes sequential ranks", {
   expect_equal(s2$timepoint_rank, 1:2)
 })
 
+test_that("recalculate_timepoint_rank sorts by original rank, not lexically", {
+  df <- data.frame(
+    subject_id = rep("s1", 4),
+    parameter_id = rep("p1", 4),
+    timepoint_1_name = c("SCREENING 1", "WEEK 2", "WEEK 12", "WEEK 8"),
+    timepoint_rank = c(1, 3, 7, 5),
+    stringsAsFactors = FALSE
+  )
+
+  result <- recalculate_timepoint_rank(df)
+  expect_equal(result$timepoint_rank, 1:4)
+  expect_equal(
+    result$timepoint_1_name,
+    c("SCREENING 1", "WEEK 2", "WEEK 8", "WEEK 12")
+  )
+})
+
 test_that("arrange_timepoints orders screening first, discontinuation last", {
   visits <- c("WEEK 4", "SCREENING 1", "DISCONTINUATION", "WEEK 2", "SCREENING 2")
   result <- arrange_timepoints(visits)
@@ -78,10 +95,48 @@ test_that("arrange_timepoints orders screening first, discontinuation last", {
   expect_equal(lvls[length(lvls)], "DISCONTINUATION")
 })
 
+test_that("arrange_timepoints uses natural numeric sort, not lexical", {
+  visits <- c("WEEK 12", "WEEK 2", "WEEK 4", "WEEK 20", "WEEK 8")
+  result <- arrange_timepoints(visits)
+  expect_equal(
+    levels(result),
+    c("WEEK 2", "WEEK 4", "WEEK 8", "WEEK 12", "WEEK 20")
+  )
+})
+
+test_that("arrange_timepoints puts baseline before numbered visits", {
+  visits <- c("WEEK 4", "WEEK 2", "BASELINE")
+  result <- arrange_timepoints(visits)
+  expect_equal(levels(result), c("BASELINE", "WEEK 2", "WEEK 4"))
+})
+
+test_that("arrange_timepoints full clinical ordering", {
+  visits <- c("WEEK 12", "BASELINE", "SCREENING 1", "WEEK 2",
+              "DISCONTINUATION", "WEEK 4")
+  result <- arrange_timepoints(visits)
+  expect_equal(
+    levels(result),
+    c("SCREENING 1", "BASELINE", "WEEK 2", "WEEK 4", "WEEK 12",
+      "DISCONTINUATION")
+  )
+})
+
 test_that("arrange_timepoints handles no screening or discontinuation", {
   visits <- c("WEEK 4", "WEEK 2", "BASELINE")
   result <- arrange_timepoints(visits)
   expect_equal(levels(result), c("BASELINE", "WEEK 2", "WEEK 4"))
+})
+
+test_that("sort_visits_natural handles mixed named and numbered visits", {
+  x <- c("DAY 14", "WEEK 2", "DAY 1", "WEEK 12")
+  expect_equal(
+    sort_visits_natural(x),
+    c("DAY 1", "DAY 14", "WEEK 2", "WEEK 12")
+  )
+})
+
+test_that("sort_visits_natural handles empty input", {
+  expect_equal(sort_visits_natural(character(0)), character(0))
 })
 
 test_that("encode_categorical returns correct structure", {

@@ -258,12 +258,18 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
         .data$timepoint_1_name
       )
     ) |>
-    dplyr::mutate(
-      timepoint_1_name = arrange_timepoints(.data$timepoint_1_name)
-    ) |>
     dplyr::distinct(.data$subject_id, .data$site_label, .data$timepoint_1_name,
                     .data$timepoint_rank, .data$val_cat) |>
-    dplyr::arrange(.data$subject_id, .data$timepoint_1_name)
+    dplyr::arrange(.data$subject_id, .data$timepoint_rank)
+
+  # Order x-axis by timepoint_rank (avoids lexical misordering of visit names)
+  visit_levels <- df_plot |>
+    dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
+    dplyr::arrange(.data$timepoint_rank) |>
+    dplyr::pull(.data$timepoint_1_name)
+  df_plot$timepoint_1_name <- factor(
+    df_plot$timepoint_1_name, levels = unique(visit_levels)
+  )
 
   # Try alluvial, fall back to bar on error
   p_alluvial <- try_alluvial(df_plot)
@@ -430,11 +436,18 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
         .data$max_score_site > .env$thresh,
         paste(.data$site, "*"),
         "unflagged"
-      ),
-      timepoint_1_name = arrange_timepoints(.data$timepoint_1_name)
+      )
     ) |>
     dplyr::distinct(.data$subject_id, .data$site_label, .data$timepoint_1_name,
                     .data$timepoint_rank, .data$val_cat)
+
+  visit_levels <- df_gr |>
+    dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
+    dplyr::arrange(.data$timepoint_rank) |>
+    dplyr::pull(.data$timepoint_1_name)
+  df_gr$timepoint_1_name <- factor(
+    df_gr$timepoint_1_name, levels = unique(visit_levels)
+  )
 
   if (dplyr::n_distinct(df_gr$timepoint_1_name) > 3) {
     plot_cat_bar_stacked(df_gr)

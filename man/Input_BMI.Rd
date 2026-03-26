@@ -12,7 +12,8 @@ Input_BMI(dfDM, dfVS)
 \item{dfVS}{Data frame with SDTM VS columns.}
 }
 \value{
-A list with elements \code{data}, \code{subjects}, \code{parameters}.
+A list with elements \code{data}, \code{subjects}, \code{parameters}, plus
+\code{untransformed} with original weight values and categories.
 }
 \description{
 Derives weight categories from screening-visit weight measurements

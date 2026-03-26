@@ -120,8 +120,11 @@ determine_plot_type <- function(cat3) {
 #' @param id Module namespace ID.
 #' @param rctv_measures Reactive expression returning the measures data frame.
 #' @param rctv_ctas_results Reactive expression returning the raw ctas results list.
+#' @param rctv_untransformed Reactive expression returning the untransformed
+#'   timeseries data frame (NULL for ctas sample data).
 #' @export
-mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
+mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
+                                   rctv_untransformed = shiny::reactiveVal(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -268,7 +271,9 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results) {
       param_ids <- lookup$parameter_ids[match_row][[1]]
 
       thresh <- input$thresh %||% 1.3
-      ts_data <- prepare_ts_data_multi(df, param_ids, thresh)
+      untransformed <- rctv_untransformed()
+      ts_data <- prepare_ts_data_multi(df, param_ids, thresh,
+                                       untransformed = untransformed)
       shiny::validate(shiny::need(
         nrow(ts_data) > 0,
         "No outlier site data to display (no sites exceed the threshold for this parameter)."

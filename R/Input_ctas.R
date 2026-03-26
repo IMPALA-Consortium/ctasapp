@@ -47,7 +47,7 @@ filter_unscheduled <- function(df) {
 #' @param dfLB Data frame with SDTM LB columns.
 #'
 #' @return A list with elements `data`, `subjects`, `parameters` matching the
-#'   ctas input schema.
+#'   ctas input schema, plus `untransformed` with original lab values and ranges.
 #' @export
 Input_Labs <- function(dfDM, dfLB) {
   subjects <- build_subjects(dfDM)
@@ -104,7 +104,7 @@ Input_Labs <- function(dfDM, dfLB) {
       value = .data$value,
       parameter_id = paste0("LB_MISS_", .data$lbtestcd)
     ) |>
-    dplyr::arrange(.data$subject_id, .data$parameter_id, .data$timepoint_1_name)
+    dplyr::arrange(.data$subject_id, .data$parameter_id, .data$timepoint_rank, .data$timepoint_1_name)
 
   df_miss_base$result <- ratio_missing_over_time(
     df_miss_base$value,
@@ -131,10 +131,22 @@ Input_Labs <- function(dfDM, dfLB) {
     ) |>
     recalculate_timepoint_rank()
 
+  untransformed <- df_base |>
+    dplyr::transmute(
+      subject_id = .data$subject_id,
+      parameter_category_2 = .data$lbtestcd,
+      timepoint_1_name = .data$timepoint_1_name,
+      original_value = .data$value,
+      lower = .data$lower,
+      upper = .data$upper,
+      original_category = NA_character_
+    )
+
   list(
     data = dplyr::bind_rows(data_norm, data_miss),
     subjects = subjects,
-    parameters = dplyr::bind_rows(params_norm, params_miss)
+    parameters = dplyr::bind_rows(params_norm, params_miss),
+    untransformed = untransformed
   )
 }
 
@@ -147,7 +159,8 @@ Input_Labs <- function(dfDM, dfLB) {
 #' @param dfDM Data frame with SDTM DM columns.
 #' @param dfVS Data frame with SDTM VS columns.
 #'
-#' @return A list with elements `data`, `subjects`, `parameters`.
+#' @return A list with elements `data`, `subjects`, `parameters`, plus
+#'   `untransformed` with original vital sign values.
 #' @export
 Input_VS <- function(dfDM, dfVS) {
   subjects <- build_subjects(dfDM)
@@ -177,10 +190,22 @@ Input_VS <- function(dfDM, dfVS) {
       parameter_category_3 = "numeric"
     )
 
+  untransformed <- df |>
+    dplyr::transmute(
+      subject_id = .data$subject_id,
+      parameter_category_2 = .data$parameter_id,
+      timepoint_1_name = .data$timepoint_1_name,
+      original_value = .data$result,
+      lower = NA_real_,
+      upper = NA_real_,
+      original_category = NA_character_
+    )
+
   list(
     data = dplyr::select(df, -"vstest"),
     subjects = subjects,
-    parameters = params
+    parameters = params,
+    untransformed = untransformed
   )
 }
 
@@ -195,7 +220,8 @@ Input_VS <- function(dfDM, dfVS) {
 #' @param dfRS Data frame with SDTM RS columns (e.g. `rs_onco`).
 #' @param strTestCD Test code to filter on. Default: `"OVRLRESP"`.
 #'
-#' @return A list with elements `data`, `subjects`, `parameters`.
+#' @return A list with elements `data`, `subjects`, `parameters`, plus
+#'   `untransformed` with original categorical response values.
 #' @export
 Input_RS <- function(dfDM, dfRS, strTestCD = "OVRLRESP") {
   subjects <- build_subjects(dfDM)
@@ -217,6 +243,13 @@ Input_RS <- function(dfDM, dfRS, strTestCD = "OVRLRESP") {
   prefix <- paste0("RS_", strTestCD)
   encoded <- encode_categorical(df_filt$value, prefix = prefix)
 
+  empty_untransformed <- data.frame(
+    subject_id = character(0), parameter_category_2 = character(0),
+    timepoint_1_name = character(0), original_value = numeric(0),
+    lower = numeric(0), upper = numeric(0),
+    original_category = character(0), stringsAsFactors = FALSE
+  )
+
   if (nrow(encoded) == 0) {
     return(list(
       data = data.frame(
@@ -230,9 +263,21 @@ Input_RS <- function(dfDM, dfRS, strTestCD = "OVRLRESP") {
         parameter_id = character(0), parameter_name = character(0),
         parameter_category_1 = character(0), parameter_category_2 = character(0),
         parameter_category_3 = character(0), stringsAsFactors = FALSE
-      )
+      ),
+      untransformed = empty_untransformed
     ))
   }
+
+  untransformed <- df_filt |>
+    dplyr::transmute(
+      subject_id = .data$subject_id,
+      parameter_category_2 = .env$prefix,
+      timepoint_1_name = .data$timepoint_1_name,
+      original_value = NA_real_,
+      lower = NA_real_,
+      upper = NA_real_,
+      original_category = .data$value
+    )
 
   data <- data.frame(
     subject_id = df_filt$subject_id[encoded$orig_row],
@@ -256,7 +301,8 @@ Input_RS <- function(dfDM, dfRS, strTestCD = "OVRLRESP") {
     stringsAsFactors = FALSE
   )
 
-  list(data = data, subjects = subjects, parameters = params)
+  list(data = data, subjects = subjects, parameters = params,
+       untransformed = untransformed)
 }
 
 
@@ -268,7 +314,8 @@ Input_RS <- function(dfDM, dfRS, strTestCD = "OVRLRESP") {
 #' @param dfDM Data frame with SDTM DM columns.
 #' @param dfVS Data frame with SDTM VS columns.
 #'
-#' @return A list with elements `data`, `subjects`, `parameters`.
+#' @return A list with elements `data`, `subjects`, `parameters`, plus
+#'   `untransformed` with original weight values and categories.
 #' @export
 Input_BMI <- function(dfDM, dfVS) {
   subjects <- build_subjects(dfDM)
@@ -298,6 +345,13 @@ Input_BMI <- function(dfDM, dfVS) {
   prefix <- "VS_WEIGHT_CAT"
   encoded <- encode_categorical(df_wt$weight_cat, prefix = prefix)
 
+  empty_untransformed <- data.frame(
+    subject_id = character(0), parameter_category_2 = character(0),
+    timepoint_1_name = character(0), original_value = numeric(0),
+    lower = numeric(0), upper = numeric(0),
+    original_category = character(0), stringsAsFactors = FALSE
+  )
+
   if (nrow(encoded) == 0) {
     return(list(
       data = data.frame(
@@ -311,9 +365,21 @@ Input_BMI <- function(dfDM, dfVS) {
         parameter_id = character(0), parameter_name = character(0),
         parameter_category_1 = character(0), parameter_category_2 = character(0),
         parameter_category_3 = character(0), stringsAsFactors = FALSE
-      )
+      ),
+      untransformed = empty_untransformed
     ))
   }
+
+  untransformed <- df_wt |>
+    dplyr::transmute(
+      subject_id = .data$subject_id,
+      parameter_category_2 = .env$prefix,
+      timepoint_1_name = .data$timepoint_1_name,
+      original_value = .data$weight,
+      lower = NA_real_,
+      upper = NA_real_,
+      original_category = .data$weight_cat
+    )
 
   data <- data.frame(
     subject_id = df_wt$subject_id[encoded$orig_row],
@@ -336,7 +402,8 @@ Input_BMI <- function(dfDM, dfVS) {
     stringsAsFactors = FALSE
   )
 
-  list(data = data, subjects = subjects, parameters = params)
+  list(data = data, subjects = subjects, parameters = params,
+       untransformed = untransformed)
 }
 
 
@@ -345,12 +412,15 @@ Input_BMI <- function(dfDM, dfVS) {
 #' Takes one or more ctas input lists (each with `data`, `subjects`,
 #' `parameters`) and merges them into a single ctas-compatible list.
 #' Deduplicates subjects and adds empty `custom_timeseries` and
-#' `custom_reference_groups` tibbles.
+#' `custom_reference_groups` tibbles. If inputs include `untransformed`
+#' elements, these are row-bound into a combined `untransformed` data frame.
 #'
-#' @param ... One or more lists with elements `data`, `subjects`, `parameters`.
+#' @param ... One or more lists with elements `data`, `subjects`, `parameters`,
+#'   and optionally `untransformed`.
 #'
 #' @return A list with elements: `data`, `subjects`, `parameters`,
-#'   `custom_timeseries`, `custom_reference_groups`.
+#'   `custom_timeseries`, `custom_reference_groups`, and `untransformed`
+#'   (NULL when no inputs contain untransformed data).
 #' @export
 combine_ctas_input <- function(...) {
   inputs <- list(...)
@@ -368,6 +438,14 @@ combine_ctas_input <- function(...) {
       use_only_custom_timeseries = NA
     )
 
+  untransformed_list <- lapply(inputs, `[[`, "untransformed")
+  has_untransformed <- !vapply(untransformed_list, is.null, logical(1))
+  untransformed <- if (any(has_untransformed)) {
+    dplyr::bind_rows(untransformed_list[has_untransformed])
+  } else {
+    NULL
+  }
+
   list(
     data = data,
     subjects = subjects,
@@ -383,6 +461,7 @@ combine_ctas_input <- function(...) {
       feature = character(0),
       ref_group = character(0),
       stringsAsFactors = FALSE
-    )
+    ),
+    untransformed = untransformed
   )
 }

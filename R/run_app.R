@@ -24,7 +24,9 @@ run_ctas_app <- function(...) {
 
   server <- function(input, output, session) {
     data <- mod_DataInput_server("data_input")
-    mod_FieldDetail_server("field_detail", data$measures, data$ctas_results)
+    mod_FieldDetail_server(
+      "field_detail", data$measures, data$ctas_results, data$untransformed
+    )
   }
 
   shiny::shinyApp(ui, server, ...)

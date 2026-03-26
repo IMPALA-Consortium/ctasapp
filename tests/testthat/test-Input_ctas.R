@@ -83,7 +83,7 @@ test_that("Input_Labs returns correct structure with norm and miss params sharin
   result <- Input_Labs(dm, lb)
 
   expect_type(result, "list")
-  expect_true(all(c("data", "subjects", "parameters") %in% names(result)))
+  expect_true(all(c("data", "subjects", "parameters", "untransformed") %in% names(result)))
   expect_s3_class(result$data, "data.frame")
 
   expect_true(any(grepl("^LB_NORM_", result$parameters$parameter_id)))
@@ -93,6 +93,24 @@ test_that("Input_Labs returns correct structure with norm and miss params sharin
   alt_params <- result$parameters[grepl("ALT", result$parameters$parameter_id), ]
   expect_equal(length(unique(alt_params$parameter_category_2)), 1)
   expect_equal(unique(alt_params$parameter_category_2), "ALT")
+})
+
+
+test_that("Input_Labs untransformed has original values and ranges", {
+  dm <- make_dm()
+  lb <- make_lb(dm)
+  result <- Input_Labs(dm, lb)
+
+  ut <- result$untransformed
+  expect_s3_class(ut, "data.frame")
+  expect_true(nrow(ut) > 0)
+  expect_true(all(c("subject_id", "parameter_category_2", "timepoint_1_name",
+                     "original_value", "lower", "upper", "original_category") %in% names(ut)))
+  expect_true(all(!is.na(ut$original_value)))
+  expect_true(all(!is.na(ut$lower)))
+  expect_true(all(!is.na(ut$upper)))
+  expect_true(all(is.na(ut$original_category)))
+  expect_true(all(ut$parameter_category_2 %in% c("ALT", "AST")))
 })
 
 
@@ -126,8 +144,24 @@ test_that("Input_VS returns correct structure with numeric params", {
   result <- Input_VS(dm, vs)
 
   expect_type(result, "list")
+  expect_true("untransformed" %in% names(result))
   expect_true(all(result$parameters$parameter_category_3 == "numeric"))
   expect_true(any(grepl("^VS_", result$parameters$parameter_id)))
+})
+
+
+test_that("Input_VS untransformed has original values without ranges", {
+  dm <- make_dm()
+  vs <- make_vs(dm)
+  result <- Input_VS(dm, vs)
+
+  ut <- result$untransformed
+  expect_s3_class(ut, "data.frame")
+  expect_true(nrow(ut) > 0)
+  expect_true(all(!is.na(ut$original_value)))
+  expect_true(all(is.na(ut$lower)))
+  expect_true(all(is.na(ut$upper)))
+  expect_true(all(is.na(ut$original_category)))
 })
 
 
@@ -154,6 +188,21 @@ test_that("Input_RS returns categorical one-hot encoded parameters", {
 })
 
 
+test_that("Input_RS untransformed has original categories", {
+  dm <- make_dm()
+  rs <- make_rs(dm)
+  result <- Input_RS(dm, rs)
+
+  ut <- result$untransformed
+  expect_s3_class(ut, "data.frame")
+  expect_true(nrow(ut) > 0)
+  expect_true(all(is.na(ut$original_value)))
+  expect_true(all(!is.na(ut$original_category)))
+  expect_true(all(ut$original_category %in% c("CR", "PR", "SD")))
+  expect_equal(unique(ut$parameter_category_2), "RS_OVRLRESP")
+})
+
+
 test_that("Input_RS returns empty structure for missing test code", {
   dm <- make_dm()
   rs <- make_rs(dm)
@@ -161,6 +210,8 @@ test_that("Input_RS returns empty structure for missing test code", {
 
   expect_equal(nrow(result$data), 0)
   expect_equal(nrow(result$parameters), 0)
+  expect_true("untransformed" %in% names(result))
+  expect_equal(nrow(result$untransformed), 0)
 })
 
 
@@ -170,8 +221,23 @@ test_that("Input_BMI returns bar-type parameters", {
   result <- Input_BMI(dm, vs)
 
   expect_type(result, "list")
+  expect_true("untransformed" %in% names(result))
   expect_true(all(result$parameters$parameter_category_3 == "bar"))
   expect_true(all(grepl("^VS_WEIGHT_CAT=", result$parameters$parameter_id)))
+})
+
+
+test_that("Input_BMI untransformed has weight values and categories", {
+  dm <- make_dm()
+  vs <- make_vs(dm)
+  result <- Input_BMI(dm, vs)
+
+  ut <- result$untransformed
+  expect_s3_class(ut, "data.frame")
+  expect_true(nrow(ut) > 0)
+  expect_true(all(!is.na(ut$original_value)))
+  expect_true(all(!is.na(ut$original_category)))
+  expect_equal(unique(ut$parameter_category_2), "VS_WEIGHT_CAT")
 })
 
 
@@ -183,6 +249,8 @@ test_that("Input_BMI returns empty structure when no screening weights", {
 
   expect_equal(nrow(result$data), 0)
   expect_equal(nrow(result$parameters), 0)
+  expect_true("untransformed" %in% names(result))
+  expect_equal(nrow(result$untransformed), 0)
 })
 
 
@@ -198,7 +266,8 @@ test_that("combine_ctas_input merges multiple inputs", {
 
   expect_type(combined, "list")
   expect_true(all(c("data", "subjects", "parameters",
-                     "custom_timeseries", "custom_reference_groups") %in% names(combined)))
+                     "custom_timeseries", "custom_reference_groups",
+                     "untransformed") %in% names(combined)))
 
   expect_equal(
     nrow(combined$data),
@@ -206,6 +275,12 @@ test_that("combine_ctas_input merges multiple inputs", {
   )
 
   expect_true("time_point_count_min" %in% names(combined$parameters))
+
+  expect_s3_class(combined$untransformed, "data.frame")
+  expect_equal(
+    nrow(combined$untransformed),
+    nrow(input_labs$untransformed) + nrow(input_vs$untransformed)
+  )
 })
 
 

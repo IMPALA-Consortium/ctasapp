@@ -40,17 +40,20 @@ mod_DataInput_ui <- function(id) {
 
 #' Data Input Module - Server
 #'
-#' Returns a named list of two reactives: `measures` (the prepared data frame)
-#' and `ctas_results` (the raw ctas output list for per-feature score access).
+#' Returns a named list of three reactives: `measures` (the prepared data frame),
+#' `ctas_results` (the raw ctas output list for per-feature score access), and
+#' `untransformed` (pre-transformation timeseries data, NULL for ctas sample).
 #'
 #' @param id Module namespace ID.
-#' @return Named list with `measures` and `ctas_results` reactive expressions.
+#' @return Named list with `measures`, `ctas_results`, and `untransformed`
+#'   reactive expressions.
 #' @export
 mod_DataInput_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
 
     rv_measures <- shiny::reactiveVal(NULL)
     rv_ctas_results <- shiny::reactiveVal(NULL)
+    rv_untransformed <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(input$load_sample, {
       choice <- input$dataset_choice %||% "ctas"
@@ -68,6 +71,7 @@ mod_DataInput_server <- function(id) {
       measures <- prepare_measures(ctas_data, ctas_results)
       rv_measures(measures)
       rv_ctas_results(ctas_results)
+      rv_untransformed(ctas_data$untransformed)
       shiny::showNotification(
         paste0("Loaded ", label, " data: ", nrow(measures), " observations"),
         type = "message",
@@ -98,7 +102,8 @@ mod_DataInput_server <- function(id) {
 
     list(
       measures = rv_measures,
-      ctas_results = rv_ctas_results
+      ctas_results = rv_ctas_results,
+      untransformed = rv_untransformed
     )
   })
 }

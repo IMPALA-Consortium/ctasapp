@@ -1,0 +1,116 @@
+---
+title: "Data Join Strategy"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Data Join Strategy}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+`ctasapp` displays timeseries data from two different origins:
+
+1. **Transformed data** -- the ctas input format (`result` column), produced by
+   `Input_*()` functions from raw SDTM domains. This is what `ctas::process_a_study()`
+   consumes to compute outlier scores.
+2. **Untransformed data** -- the original measurement values before normalisation,
+   ratio-missing calculation, or categorical one-hot encoding.
+
+The bottom "Timeseries Data (Outlier Sites)" table shows the untransformed values
+when available (SDTM samples), and falls back to the transformed `result` column
+for the built-in ctas sample data.
+
+## Data layers
+
+| Layer | Source | Key columns | Purpose |
+|:------|:-------|:------------|:--------|
+| **SDTM domains** | `pharmaversesdtm` (`lb`, `vs`, `rs_onco`, `dm`) | `USUBJID`, `VISIT`, domain-specific | Raw clinical data |
+| **Untransformed timeseries** | `Input_*()$untransformed` | `subject_id`, `parameter_category_2`, `timepoint_1_name` | Pre-transformation values with ranges |
+| **ctas input** | `Input_*()$data` via `combine_ctas_input()` | `subject_id`, `parameter_id`, `timepoint_rank` | Normalised / encoded values for ctas |
+| **ctas results** | `ctas::process_a_study()` | `timeseries_id`, `site`, `feature` | Outlier scores per site per feature |
+| **Measures** | `prepare_measures()` | `subject_id`, `parameter_id`, `site` | Joined data + scores for plotting |
+
+## Join strategy for the data table
+
+`prepare_ts_data_multi()` assembles the bottom table with the following logic:
+
+```
+measures (filtered by parameter_ids + threshold)
+  |
+  LEFT JOIN untransformed
+    ON subject_id + parameter_category_2 + timepoint_1_name
+  |
+  DROP all-NA columns
+  |
+  -> display table
+```
+
+### Join key
+
+The join uses three columns:
+
+- `subject_id` -- the patient identifier (`USUBJID`).
+- `parameter_category_2` -- the field-level grouping key (e.g. `"ALT"` for labs,
+  `"RS_OVRLRESP"` for response, `"VS_SYSBP"` for vital signs). This groups
+  related `parameter_id`s (norm + missing for labs, one-hot levels for categorical).
+- `timepoint_1_name` -- the visit label (e.g. `"WEEK 2"`).
+
+The untransformed data is deduplicated on these three columns before joining to
+prevent row multiplication from source-data duplicates.
+
+### Columns by parameter type
+
+| Parameter type | `original_value` | `lower` | `upper` | `original_category` |
+|:---------------|:-----------------:|:-------:|:-------:|:-------------------:|
+| Labs (range_normalized / ratio_missing) | LBSTRESN | LBSTNRLO | LBSTNRHI | -- |
+| Vital Signs (numeric) | VSSTRESN | -- | -- | -- |
+| Response (categorical) | -- | -- | -- | RSORRES |
+| Weight Category (bar) | weight (kg) | -- | -- | category label |
+
+Columns that are entirely `NA` for a given parameter selection are dropped
+automatically so the table stays clean.
+
+### Fallback for ctas sample data
+
+The built-in ctas sample data (`sample_ctas_data`) has no `untransformed` element
+(it is `NULL`). In this case, `prepare_ts_data_multi()` skips the join and shows
+the standard columns: `site`, `subject_id`, `parameter_id`, `timepoint_rank`,
+`timepoint_1_name`, `result`, `parameter_name`, `max_score`.
+
+## How Input_* functions produce both layers
+
+Each `Input_*()` function (e.g. `Input_Labs`, `Input_VS`, `Input_RS`, `Input_BMI`)
+returns a list with four elements:
+
+- `data` -- ctas-compatible timeseries (transformed `result`).
+- `subjects` -- subject metadata.
+- `parameters` -- parameter metadata.
+- `untransformed` -- pre-transformation values with reference ranges.
+
+`combine_ctas_input()` row-binds the `untransformed` frames from all inputs.
+The combined list is stored as `sample_sdtm_data` and bundled in the package.
+
+## Data flow through the app
+
+```
+mod_DataInput_server
+  |-- rv_measures       <- prepare_measures(ctas_data, ctas_results)
+  |-- rv_ctas_results   <- ctas_results
+  |-- rv_untransformed  <- ctas_data$untransformed  (NULL for ctas sample)
+  |
+  v
+mod_FieldDetail_server(rctv_measures, rctv_ctas_results, rctv_untransformed)
+  |
+  |-- score_table      <- prepare_score_table_multi(ctas_results, param_ids)
+  |-- ts_plot          <- plot_timeseries / plot_categorical / plot_bar
+  |-- ts_data_table    <- prepare_ts_data_multi(measures, param_ids, thresh,
+  |                                              untransformed)
+```

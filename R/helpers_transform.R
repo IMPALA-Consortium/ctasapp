@@ -56,19 +56,24 @@ ratio_missing_over_time <- function(value, subject_id, parameter_id) {
 #' Recalculate timepoint rank as positional integer
 #'
 #' Computes `row_number()` within each `(subject_id, parameter_id)` group,
-#' ordered by `timepoint_1_name`. This replaces raw `VISITNUM` values with
-#' a meaningful sequential rank suitable for x-axis plotting.
-#' Matches applytsoa's `tbl_measures.R` rank calculation.
+#' ordered first by the original numeric `timepoint_rank` (typically VISITNUM)
+#' and then by `timepoint_1_name` as a tiebreaker. This produces a clean
+#' 1, 2, 3, ... sequence that respects the clinical visit ordering rather
+#' than relying on lexical sorting of visit names (which miorders e.g.
+#' "WEEK 12" before "WEEK 2").
 #'
 #' @param df Data frame with at least columns `subject_id`, `parameter_id`,
-#'   `timepoint_1_name`, and `timepoint_rank`.
+#'   `timepoint_1_name`, and `timepoint_rank` (original numeric visit number).
 #'
 #' @return The input data frame with `timepoint_rank` replaced by recalculated
 #'   positional integers.
 #' @export
 recalculate_timepoint_rank <- function(df) {
   df |>
-    dplyr::arrange(.data$subject_id, .data$parameter_id, .data$timepoint_1_name) |>
+    dplyr::arrange(
+      .data$subject_id, .data$parameter_id,
+      .data$timepoint_rank, .data$timepoint_1_name
+    ) |>
     dplyr::mutate(
       timepoint_rank = dplyr::row_number(),
       .by = c("subject_id", "parameter_id")
@@ -78,21 +83,49 @@ recalculate_timepoint_rank <- function(df) {
 
 #' Arrange visit names into clinically meaningful order
 #'
-#' Orders factor levels so that screening visits come first, discontinuation
-#' visits come last, and all others are sorted alphabetically in between.
-#' Ported from applytsoa's `report_arrange_timepoints()`.
+#' Orders factor levels: screening first, then baseline, then remaining visits
+#' in natural numeric order (so "WEEK 2" < "WEEK 12"), then discontinuation
+#' last. Uses [sort_visits_natural()] for the middle group to avoid lexical
+#' misordering of numbered visit names.
 #'
 #' @param x Character vector of visit names.
 #'
-#' @return A factor with levels ordered: screening, sorted others, discontinuation.
+#' @return A factor with levels ordered: screening, baseline, numbered visits,
+#'   discontinuation.
 #' @export
 arrange_timepoints <- function(x) {
   lvls <- unique(x)
   screening <- lvls[grepl("screen", tolower(lvls))]
   discont <- lvls[grepl("disc", tolower(lvls))]
-  others <- lvls[!lvls %in% c(screening, discont)]
-  lvls <- c(sort(screening), sort(others), sort(discont))
+  baseline <- lvls[grepl("^base", tolower(lvls))]
+  others <- lvls[!lvls %in% c(screening, discont, baseline)]
+  lvls <- c(
+    sort(screening),
+    sort(baseline),
+    sort_visits_natural(others),
+    sort(discont)
+  )
   factor(x, levels = lvls)
+}
+
+
+#' Sort visit names using natural numeric ordering
+#'
+#' Extracts the last number from each visit name and sorts by the text prefix
+#' first, then numerically. Visits without numbers sort alphabetically among
+#' themselves ahead of numbered visits with the same prefix.
+#'
+#' @param x Character vector of visit names.
+#' @return Character vector, sorted in natural order.
+#' @keywords internal
+sort_visits_natural <- function(x) {
+  if (length(x) == 0) return(character(0))
+  last_num <- suppressWarnings(
+    as.numeric(sub(".*?(\\d+)[^0-9]*$", "\\1", x))
+  )
+  has_num <- !is.na(last_num)
+  prefix <- ifelse(has_num, trimws(sub("\\d+[^0-9]*$", "", x)), x)
+  x[order(prefix, last_num, x)]
 }
 
 
