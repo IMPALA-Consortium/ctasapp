@@ -37,7 +37,14 @@ mod_FieldDetail_ui <- function(id) {
       bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
     ),
     shiny::hr(),
-    shiny::plotOutput(ns("ts_plot"), height = "700px"),
+    shiny::fluidRow(
+      shiny::column(10, shiny::plotOutput(ns("ts_plot"), height = "700px")),
+      shiny::column(
+        2,
+        style = "max-height:700px;overflow-y:auto;",
+        shiny::uiOutput(ns("visit_sorter"))
+      )
+    ),
     shiny::hr(),
     shiny::h5("Timeseries Data (Outlier Sites)"),
     DT::dataTableOutput(ns("ts_data_table"))
@@ -414,6 +421,93 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       render_score_dt(scores_display, thresh)
     })
 
+    # -- Visit sorter (arrow buttons for categorical/bar x-axis) ---------------
+    # rctv_visit_order: live state edited by arrow buttons (drives the UI list)
+    # rctv_visit_order_applied: confirmed state used by the plot (updated on Apply)
+    rctv_visit_order <- shiny::reactiveVal(NULL)
+    rctv_visit_order_applied <- shiny::reactiveVal(NULL)
+
+    shiny::observe({
+      shiny::req(input$selected_param)
+      lookup <- rctv_param_lookup()
+      sel <- input$selected_param
+      match_row <- lookup$display_id == sel
+      shiny::req(any(match_row))
+      plot_type <- lookup$plot_type[match_row]
+      if (!plot_type %in% c("categorical", "bar")) {
+        rctv_visit_order(NULL)
+        rctv_visit_order_applied(NULL)
+        return()
+      }
+      df <- rctv_measures_feat()
+      param_ids <- lookup$parameter_ids[match_row][[1]]
+      default <- get_plot_visit_levels(param_ids, df, plot_type = plot_type)
+      rctv_visit_order(default)
+      rctv_visit_order_applied(default)
+    })
+
+    shiny::observeEvent(input$visit_move, {
+      msg <- input$visit_move
+      lvls <- rctv_visit_order()
+      shiny::req(lvls)
+      i <- msg$idx
+      if (msg$dir == "up" && i > 1) {
+        lvls[c(i - 1, i)] <- lvls[c(i, i - 1)]
+      }
+      if (msg$dir == "down" && i < length(lvls)) {
+        lvls[c(i, i + 1)] <- lvls[c(i + 1, i)]
+      }
+      rctv_visit_order(lvls)
+    })
+
+    shiny::observeEvent(input$apply_visit_order, {
+      rctv_visit_order_applied(rctv_visit_order())
+    })
+
+    output$visit_sorter <- shiny::renderUI({
+      lvls <- rctv_visit_order()
+      if (is.null(lvls) || length(lvls) == 0) return(NULL)
+      n <- length(lvls)
+      move_id <- ns("visit_move")
+
+      rows <- lapply(seq_len(n), function(i) {
+        up_disabled <- if (i == 1) "disabled" else NULL
+        dn_disabled <- if (i == n) "disabled" else NULL
+        shiny::tags$div(
+          style = "display:flex;align-items:center;gap:4px;margin:1px 0;",
+          shiny::tags$button(
+            shiny::icon("arrow-up"),
+            onclick = sprintf(
+              "Shiny.setInputValue('%s',{idx:%d,dir:'up'},{priority:'event'})",
+              move_id, i
+            ),
+            class = "btn btn-sm btn-outline-secondary py-0 px-1",
+            disabled = up_disabled
+          ),
+          shiny::tags$button(
+            shiny::icon("arrow-down"),
+            onclick = sprintf(
+              "Shiny.setInputValue('%s',{idx:%d,dir:'down'},{priority:'event'})",
+              move_id, i
+            ),
+            class = "btn btn-sm btn-outline-secondary py-0 px-1",
+            disabled = dn_disabled
+          ),
+          shiny::tags$span(lvls[i], style = "font-size:.85em;")
+        )
+      })
+
+      shiny::tagList(
+        shiny::tags$p(shiny::tags$small("Reorder visits:")),
+        shiny::tags$div(rows),
+        shiny::actionButton(
+          ns("apply_visit_order"), "Apply order",
+          icon = shiny::icon("refresh"),
+          class = "btn btn-sm btn-primary mt-2"
+        )
+      )
+    })
+
     # -- Timeseries / categorical / bar plot -----------------------------------
     output$ts_plot <- shiny::renderPlot({
       df <- rctv_measures_feat()
@@ -429,11 +523,14 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       param_ids <- filter_param_ids(param_ids)
       shiny::req(length(param_ids) > 0)
       thresh <- input$thresh %||% 0
+      visit_order <- rctv_visit_order_applied()
 
       if (plot_type == "categorical") {
-        plot_categorical(param_ids, df, thresh = thresh)
+        plot_categorical(param_ids, df, thresh = thresh,
+                         visit_order = visit_order)
       } else if (plot_type == "bar") {
-        plot_bar(param_ids, df, thresh = thresh)
+        plot_bar(param_ids, df, thresh = thresh,
+                 visit_order = visit_order)
       } else {
         plot_timeseries(param_ids, df, thresh = thresh)
       }

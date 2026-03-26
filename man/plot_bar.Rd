@@ -4,7 +4,7 @@
 \alias{plot_bar}
 \title{Plot single-timepoint categorical data as a bar chart}
 \usage{
-plot_bar(param_ids, df_measures, thresh = 0, sites = NULL)
+plot_bar(param_ids, df_measures, thresh = 0, sites = NULL, visit_order = NULL)
 }
 \arguments{
 \item{param_ids}{Character vector of one-hot encoded \code{parameter_id} values.}
@@ -14,6 +14,9 @@ plot_bar(param_ids, df_measures, thresh = 0, sites = NULL)
 \item{thresh}{Numeric, score threshold for highlighting.}
 
 \item{sites}{Character vector of site IDs to show. If NULL, auto-selected.}
+
+\item{visit_order}{Character vector of visit labels in desired x-axis order,
+or NULL for default (timepoint_rank) ordering.}
 }
 \value{
 A ggplot object.
