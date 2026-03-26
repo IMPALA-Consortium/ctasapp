@@ -507,9 +507,14 @@ test_that("mod_FieldDetail_server apply_visit_order commits order to plot", {
       expect_equal(swapped[2], original[1])
       expect_identical(rctv_visit_order_applied(), original)
 
+      # Simulate moving second item up (covers the "up" branch)
+      session$setInputs(visit_move = list(idx = 2L, dir = "up"))
+      back <- rctv_visit_order()
+      expect_identical(back, original)
+
       # Click apply -- applied order catches up
       session$setInputs(apply_visit_order = 1L)
-      expect_identical(rctv_visit_order_applied(), swapped)
+      expect_identical(rctv_visit_order_applied(), original)
     }
   )
 })
@@ -535,11 +540,19 @@ test_that("mod_FieldDetail_server feature selection filters scores", {
       mf_all <- rctv_measures_feat()
       expect_equal(mf_all$max_score, m$max_score)
 
+      # All features selected -> get_selected_features() returns NULL
+      expect_null(get_selected_features())
+
+      # Select a single feature (subset) -- exercises get_selected_features()
       session$setInputs(selected_features = all_feats[1])
       session$flushReact()
 
       mf_one <- rctv_measures_feat()
       expect_true(all(mf_one$max_score <= m$max_score))
+
+      # get_selected_features() should return the subset
+      sf <- get_selected_features()
+      expect_equal(sf, all_feats[1])
     }
   )
 })

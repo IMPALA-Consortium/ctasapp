@@ -340,7 +340,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         icon_name <- if (length(row_idx) == 1) {
           plot_type_icon(lookup$plot_type[row_idx], lookup$cat3_values[[row_idx]])
         } else {
-          "chart-line"
+          "chart-line" # nocov
         }
 
         htmltools::tagList(
