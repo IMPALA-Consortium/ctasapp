@@ -10,6 +10,7 @@ mod_FieldDetail_ui(id)
 \item{id}{Module namespace ID.}
 }
 \description{
-Sidebar with threshold slider and clickable parameter list. Main content
-flows like a webpage: score table, timeseries plot, then data table.
+Sidebar with threshold slider, missingness toggle, and clickable parameter
+list. Main content flows like a webpage: pill-tabbed score tables,
+timeseries plot, then data table.
 }

@@ -1,3 +1,26 @@
+test_that("SCORE_BREAKS and SCORE_COLORS constants have correct length", {
+  expect_length(SCORE_BREAKS, 4)
+  expect_length(SCORE_COLORS_PLOT, 5)
+  expect_length(SCORE_COLORS_TABLE, 5)
+  expect_equal(SCORE_COLORS_PLOT[1], "royalblue")
+  expect_equal(SCORE_COLORS_TABLE[1], "white")
+})
+
+test_that("score_to_color maps scores to graduated colours", {
+  expect_equal(score_to_color(0), "royalblue")
+  expect_equal(score_to_color(1.3), SCORE_COLORS_PLOT[2])
+  expect_equal(score_to_color(3), SCORE_COLORS_PLOT[3])
+  expect_equal(score_to_color(5), SCORE_COLORS_PLOT[4])
+  expect_equal(score_to_color(10), SCORE_COLORS_PLOT[5])
+  expect_equal(score_to_color(999), SCORE_COLORS_PLOT[5])
+})
+
+test_that("score_to_color is vectorised", {
+  result <- score_to_color(c(0, 2, 4, 7, 20))
+  expect_length(result, 5)
+  expect_equal(result[1], "royalblue")
+})
+
 test_that("plot_timeseries returns a ggplot/patchwork object", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)
   p <- plot_timeseries("param1", m, thresh = 1.3)
