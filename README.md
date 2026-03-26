@@ -5,7 +5,7 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/IMPALA-Consortium/ctas_app/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/IMPALA-Consortium/ctas_app/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/IMPALA-Consortium/ctasapp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/IMPALA-Consortium/ctasapp/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 Interactive Shiny application for exploring results from the
@@ -16,11 +16,11 @@ site-level outlier scores and subject-level time series data.
 ## Installation
 
 You can install the development version of ctasapp from
-[GitHub](https://github.com/IMPALA-Consortium/ctas_app) with:
+[GitHub](https://github.com/IMPALA-Consortium/ctasapp) with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("IMPALA-Consortium/ctas_app")
+remotes::install_github("IMPALA-Consortium/ctasapp")
 ```
 
 ## Usage
@@ -35,6 +35,12 @@ run_ctas_app()
 Once the app is running, click **Use Sample Data** on the Data tab, then
 switch to the **Fields** tab to explore parameter-level timeseries and
 site outlier scores.
+
+## AI Disclaimer
+
+This package and documentation were developed with assistance from AI
+tools, including Cursor and Claude Opus 4.6. All AI-generated content
+has been reviewed.
 
 ## Quality Control
 
@@ -57,7 +63,7 @@ process. In particular, we do the following during early development:
   release.
 - **Contributor Guidelines** - Contributor guidelines including
   step-by-step processes for code development are provided as a
-  [vignette](https://impala-consortium.github.io/ctas_app/articles/ContributorGuidelines.html).
+  [vignette](https://impala-consortium.github.io/ctasapp/articles/ContributorGuidelines.html).
 
 ### Parking
 

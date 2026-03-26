@@ -43,6 +43,10 @@ run_ctas_app()
 
 Once the app is running, click **Use Sample Data** on the Data tab, then switch to the **Fields** tab to explore parameter-level timeseries and site outlier scores.
 
+## AI Disclaimer
+
+This package and documentation were developed with assistance from AI tools, including Cursor and Claude Opus 4.6. All AI-generated content has been reviewed.
+
 ## Quality Control
 
 Since {ctas} is designed for use in a [GCP](https://en.wikipedia.org/wiki/Good_clinical_practice) framework, we have conducted extensive quality control as part of our development process. In particular, we do the following during early development:
