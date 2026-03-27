@@ -16,6 +16,8 @@ Character scalar Font Awesome icon name.
 }
 \description{
 Uses raw \code{parameter_category_3} values to distinguish range-normalized
-labs (flask) from plain numeric timeseries (chart-line).
+labs (flask) from plain numeric timeseries (chart-line). When a config
+has been applied via \code{\link[=apply_config]{apply_config()}}, the icon mapping is read from
+\code{\link[=get_param_icons]{get_param_icons()}}.
 }
 \keyword{internal}

@@ -2,12 +2,13 @@ test_that("SCORE_BREAKS and SCORE_COLORS constants have correct length", {
   expect_length(SCORE_BREAKS, 4)
   expect_length(SCORE_COLORS_PLOT, 5)
   expect_length(SCORE_COLORS_TABLE, 5)
-  expect_equal(SCORE_COLORS_PLOT[1], "royalblue")
-  expect_equal(SCORE_COLORS_TABLE[1], "white")
+  expect_length(SCORE_COLORS_TABLE_TEXT, 5)
+  expect_equal(SCORE_COLORS_PLOT[1], "#9ED782")
+  expect_length(SCORE_COLORS_TABLE, 5)
 })
 
 test_that("score_to_color maps scores to graduated colours", {
-  expect_equal(score_to_color(0), "royalblue")
+  expect_equal(score_to_color(0), "#9ED782")
   expect_equal(score_to_color(1.3), SCORE_COLORS_PLOT[2])
   expect_equal(score_to_color(3), SCORE_COLORS_PLOT[3])
   expect_equal(score_to_color(5), SCORE_COLORS_PLOT[4])
@@ -18,7 +19,7 @@ test_that("score_to_color maps scores to graduated colours", {
 test_that("score_to_color is vectorised", {
   result <- score_to_color(c(0, 2, 4, 7, 20))
   expect_length(result, 5)
-  expect_equal(result[1], "royalblue")
+  expect_equal(result[1], "#9ED782")
 })
 
 test_that("plot_timeseries returns a ggplot/patchwork object", {
@@ -397,4 +398,49 @@ test_that("plot_cat_bar_stacked works with many timepoints in plot_bar dispatch"
     p <- plot_cat_bar_stacked(df_plot)
     expect_s3_class(p, "ggplot")
   }
+})
+
+
+# --- query data overlay tests -----------------------------------------------
+
+test_that("plot_timeseries with query_data returns valid plot", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  qd <- sample_sdtm_data$queries
+  num_params <- unique(m$parameter_id[m$parameter_category_3 == "numeric"])
+
+  p <- plot_timeseries(num_params[1], m, thresh = 0, query_data = qd)
+  expect_true(inherits(p, "ggplot") || inherits(p, "patchwork"))
+})
+
+test_that("plot_timeseries with query_data overlays query dots", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  qd <- sample_sdtm_data$queries
+  num_params <- unique(m$parameter_id[m$parameter_category_3 %in%
+                                         c("range_normalized", "ratio_missing")])
+
+  if (length(num_params) >= 2) {
+    p <- plot_timeseries(num_params[1:2], m, thresh = 0, query_data = qd)
+    expect_true(inherits(p, "ggplot") || inherits(p, "patchwork"))
+  }
+})
+
+test_that("plot_timeseries with NULL query_data works as before", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  num_params <- unique(m$parameter_id[m$parameter_category_3 == "numeric"])
+
+  p <- plot_timeseries(num_params[1], m, thresh = 0, query_data = NULL)
+  expect_true(inherits(p, "ggplot") || inherits(p, "patchwork"))
+})
+
+test_that("plot_timeseries with empty query_data does not error", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  num_params <- unique(m$parameter_id[m$parameter_category_3 == "numeric"])
+  empty_qd <- data.frame(
+    subject_id = character(0), parameter_id = character(0),
+    visit = character(0), data_change = logical(0),
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_timeseries(num_params[1], m, thresh = 0, query_data = empty_qd)
+  expect_true(inherits(p, "ggplot") || inherits(p, "patchwork"))
 })

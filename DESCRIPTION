@@ -27,7 +27,8 @@ Imports:
     DT,
     shiny,
     stringr,
-    tidyr
+    tidyr,
+    yaml
 Suggests:
     covr,
     ctas,

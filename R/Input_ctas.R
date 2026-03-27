@@ -447,6 +447,144 @@ Input_BMI <- function(dfDM, dfVS) {
 }
 
 
+#' Simulate clinical query data for a ctas input dataset
+#'
+#' Generates realistic-looking query records for approximately 15% of data
+#' points. Each query is linked back to the source data via `subject_id`,
+#' `parameter_id`, and `timepoint_1_name`. About 20% of queries indicate a
+#' data change (`data_change = TRUE`).
+#'
+#' @param ctas_data A ctas input list with `data` and `parameters` elements.
+#' @param seed Integer seed for reproducibility.
+#' @param query_frac Fraction of data points to receive queries. Default: 0.04.
+#' @param change_frac Fraction of queries that lead to a data change. Default: 0.20.
+#'
+#' @return A data frame with one row per simulated query.
+#' @export
+simulate_query_data <- function(ctas_data, seed = 123, query_frac = 0.04,
+                                change_frac = 0.20) {
+  set.seed(seed)
+
+  df <- ctas_data$data
+  params <- ctas_data$parameters
+
+  n_rows <- nrow(df)
+  n_queries <- round(n_rows * query_frac)
+  if (n_queries == 0) {
+    return(data.frame(
+      study = character(0), domain = character(0), field = character(0),
+      subject_id = character(0), visit = character(0),
+      parameter_id = character(0),
+      query_text = character(0), query_answer = character(0),
+      query_status = character(0), query_type = character(0),
+      data_change = logical(0),
+      value_first_entry = character(0), value_at_query_open = character(0),
+      value_at_query_close = character(0), value_now = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  sampled <- df[sample.int(n_rows, n_queries), , drop = FALSE]
+
+  param_meta <- params[
+    match(sampled$parameter_id, params$parameter_id), , drop = FALSE
+  ]
+
+  lorem <- c(
+    "Please verify this value against the source document.",
+    "Value appears outside expected range, please confirm.",
+    "Missing data point requires clarification.",
+    "Inconsistency with prior visit data detected.",
+    "Value deviates from protocol-specified range.",
+    "Please confirm the unit of measurement.",
+    "Transcription error suspected, please review.",
+    "Duplicate entry flagged for review.",
+    "This value conflicts with a related field.",
+    "Please provide supporting documentation."
+  )
+
+  answers <- c(
+    "Confirmed correct per source.",
+    "Value corrected as per source document.",
+    "Data entry error, value updated.",
+    "Confirmed, no change needed.",
+    "Corrected, was a transcription error.",
+    "Verified with site, value is accurate.",
+    "Updated after reviewing patient chart.",
+    "Original value confirmed by investigator."
+  )
+
+  statuses <- c("Open", "Answered", "Closed")
+  types <- c("Monitor", "Data Management")
+
+  is_change <- sample(c(TRUE, FALSE), n_queries,
+                       replace = TRUE,
+                       prob = c(change_frac, 1 - change_frac))
+
+  q_status <- sample(statuses, n_queries, replace = TRUE)
+  q_status[is_change & q_status == "Open"] <- "Closed"
+
+  q_answer <- sample(answers, n_queries, replace = TRUE)
+  q_answer[q_status == "Open"] <- NA_character_
+
+  is_numeric <- param_meta$parameter_category_3 %in%
+    c("numeric", "range_normalized", "ratio_missing")
+
+  value_now <- as.character(round(sampled$result, 4))
+
+  value_first <- value_now
+  changed_numeric <- is_change & is_numeric
+  if (any(changed_numeric)) {
+    orig <- sampled$result[changed_numeric]
+    noise <- stats::rnorm(sum(changed_numeric), mean = 0,
+                          sd = pmax(abs(orig) * 0.3, 0.1))
+    value_first[changed_numeric] <- as.character(round(orig + noise, 4))
+  }
+  changed_cat <- is_change & !is_numeric
+  if (any(changed_cat)) {
+    value_first[changed_cat] <- NA_character_
+  }
+
+  value_at_open <- value_first
+  value_at_close <- ifelse(
+    q_status == "Closed", value_now, value_first
+  )
+
+  domain <- dplyr::case_when(
+    grepl("^LB_", sampled$parameter_id) ~ "LB",
+    grepl("^VS_", sampled$parameter_id) ~ "VS",
+    grepl("^RS_", sampled$parameter_id) ~ "RS",
+    !is.na(param_meta$parameter_category_1) ~ param_meta$parameter_category_1,
+    TRUE ~ "UNKNOWN"
+  )
+
+  field <- ifelse(
+    !is.na(param_meta$parameter_category_2),
+    param_meta$parameter_category_2,
+    sampled$parameter_id
+  )
+
+  data.frame(
+    study = "STUDY-01",
+    domain = domain,
+    field = field,
+    subject_id = sampled$subject_id,
+    visit = sampled$timepoint_1_name,
+    parameter_id = sampled$parameter_id,
+    query_text = sample(lorem, n_queries, replace = TRUE),
+    query_answer = q_answer,
+    query_status = q_status,
+    query_type = sample(types, n_queries, replace = TRUE),
+    data_change = is_change,
+    value_first_entry = value_first,
+    value_at_query_open = value_at_open,
+    value_at_query_close = value_at_close,
+    value_now = value_now,
+    stringsAsFactors = FALSE
+  )
+}
+
+
 #' Combine multiple ctas input lists
 #'
 #' Takes one or more ctas input lists (each with `data`, `subjects`,

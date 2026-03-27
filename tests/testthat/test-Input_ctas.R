@@ -352,3 +352,122 @@ test_that("combine_ctas_input returns NULL untransformed when inputs lack it", {
   combined <- combine_ctas_input(input_labs, input_vs)
   expect_null(combined$untransformed)
 })
+
+
+# --- simulate_query_data tests -----------------------------------------------
+
+test_that("simulate_query_data returns correct shape and columns", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  vs <- make_vs(dm)
+  input_vs <- Input_VS(dm, vs)
+  ctas_input <- combine_ctas_input(input_labs, input_vs)
+
+  qd <- simulate_query_data(ctas_input, seed = 1)
+
+  expect_s3_class(qd, "data.frame")
+  expected_cols <- c("study", "domain", "field", "subject_id", "visit",
+                     "parameter_id", "query_text", "query_answer",
+                     "query_status", "query_type", "data_change",
+                     "value_first_entry", "value_at_query_open",
+                     "value_at_query_close", "value_now")
+  expect_true(all(expected_cols %in% names(qd)))
+})
+
+test_that("simulate_query_data samples approx 4% of rows", {
+  dm <- make_dm(20)
+  lb <- make_lb(dm, n_visits = 10)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  n_data <- nrow(ctas_input$data)
+  qd <- simulate_query_data(ctas_input, seed = 42)
+
+  expected <- round(n_data * 0.04)
+  expect_equal(nrow(qd), expected)
+})
+
+test_that("simulate_query_data data_change rate is approx 20%", {
+  dm <- make_dm(20)
+  lb <- make_lb(dm, n_visits = 10)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  qd <- simulate_query_data(ctas_input, seed = 99)
+  change_rate <- mean(qd$data_change)
+  expect_true(change_rate > 0.05 && change_rate < 0.45)
+})
+
+test_that("simulate_query_data value_now matches actual data", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  qd <- simulate_query_data(ctas_input, seed = 7)
+
+  for (i in sample.int(nrow(qd), min(5, nrow(qd)))) {
+    row_match <- ctas_input$data$subject_id == qd$subject_id[i] &
+      ctas_input$data$parameter_id == qd$parameter_id[i] &
+      ctas_input$data$timepoint_1_name == qd$visit[i]
+    if (any(row_match)) {
+      actual <- round(ctas_input$data$result[which(row_match)[1]], 4)
+      expect_equal(as.numeric(qd$value_now[i]), actual)
+    }
+  }
+})
+
+test_that("simulate_query_data handles categorical data_change with NA", {
+  dm <- make_dm(10)
+  rs <- make_rs(dm)
+  input_rs <- Input_RS(dm, rs)
+  ctas_input <- combine_ctas_input(input_rs)
+
+  qd <- simulate_query_data(ctas_input, seed = 11, change_frac = 1.0)
+  expect_true(any(is.na(qd$value_first_entry)))
+})
+
+test_that("simulate_query_data returns empty frame for zero-row data", {
+  empty_input <- list(
+    data = data.frame(
+      subject_id = character(0), parameter_id = character(0),
+      timepoint_1_name = character(0), timepoint_rank = numeric(0),
+      result = numeric(0), timepoint_2_name = character(0),
+      baseline = numeric(0), stringsAsFactors = FALSE
+    ),
+    parameters = data.frame(
+      parameter_id = character(0), parameter_name = character(0),
+      parameter_category_1 = character(0), parameter_category_2 = character(0),
+      parameter_category_3 = character(0), stringsAsFactors = FALSE
+    )
+  )
+
+  qd <- simulate_query_data(empty_input, seed = 1)
+  expect_equal(nrow(qd), 0)
+  expect_true("data_change" %in% names(qd))
+})
+
+test_that("simulate_query_data query_answer is NA for open queries", {
+  dm <- make_dm(20)
+  lb <- make_lb(dm, n_visits = 10)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  qd <- simulate_query_data(ctas_input, seed = 55)
+  open_queries <- qd[qd$query_status == "Open", ]
+  if (nrow(open_queries) > 0) {
+    expect_true(all(is.na(open_queries$query_answer)))
+  }
+})
+
+test_that("simulate_query_data seed is reproducible", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  qd1 <- simulate_query_data(ctas_input, seed = 42)
+  qd2 <- simulate_query_data(ctas_input, seed = 42)
+  expect_identical(qd1, qd2)
+})

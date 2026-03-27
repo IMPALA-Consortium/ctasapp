@@ -46,8 +46,13 @@ mod_FieldDetail_ui <- function(id) {
       )
     ),
     shiny::hr(),
-    shiny::h5("Timeseries Data (Outlier Sites)"),
-    DT::dataTableOutput(ns("ts_data_table"))
+    shiny::h5("Data Tables (Outlier Sites)"),
+    bslib::navset_pill(
+      id = ns("data_tab"),
+      selected = "Queries",
+      bslib::nav_panel("Queries", DT::dataTableOutput(ns("query_table"))),
+      bslib::nav_panel("Source Data", DT::dataTableOutput(ns("ts_data_table")))
+    )
   )
 }
 
@@ -136,13 +141,24 @@ determine_plot_type <- function(cat3) {
 #' Map plot type to a Font Awesome icon name
 #'
 #' Uses raw `parameter_category_3` values to distinguish range-normalized
-#' labs (flask) from plain numeric timeseries (chart-line).
+#' labs (flask) from plain numeric timeseries (chart-line). When a config
+#' has been applied via [apply_config()], the icon mapping is read from
+#' [get_param_icons()].
 #'
 #' @param plot_type Character scalar from [build_param_lookup()].
 #' @param cat3_values Character vector of raw `parameter_category_3` values.
 #' @return Character scalar Font Awesome icon name.
 #' @keywords internal
 plot_type_icon <- function(plot_type, cat3_values) {
+  icons <- get_param_icons()
+  if (!is.null(icons)) {
+    if (any(cat3_values == "range_normalized") &&
+        !is.null(icons[["range_normalized"]])) {
+      return(icons[["range_normalized"]])
+    }
+    icon <- icons[[plot_type]]
+    if (!is.null(icon)) return(icon)
+  }
   if (any(cat3_values == "range_normalized")) return("flask")
   switch(plot_type,
     categorical = "water",
@@ -204,15 +220,21 @@ render_score_dt <- function(scores_display, thresh) {
     )
   )
 
+  brks <- get_score_breaks()
+  tbl_cols <- get_score_colors_table()
+  tbl_text <- get_score_colors_table_text()
+
   for (col in feature_cols) {
     dt <- DT::formatStyle(
       dt, col,
-      backgroundColor = DT::styleInterval(SCORE_BREAKS, SCORE_COLORS_TABLE)
+      backgroundColor = DT::styleInterval(brks, tbl_cols),
+      color = DT::styleInterval(brks, tbl_text)
     )
   }
   dt <- DT::formatStyle(
     dt, "max_score",
-    backgroundColor = DT::styleInterval(SCORE_BREAKS, SCORE_COLORS_TABLE)
+    backgroundColor = DT::styleInterval(brks, tbl_cols),
+    color = DT::styleInterval(brks, tbl_text)
   )
 
   dt
@@ -232,9 +254,12 @@ render_score_dt <- function(scores_display, thresh) {
 #' @param rctv_ctas_results Reactive expression returning the raw ctas results list.
 #' @param rctv_untransformed Reactive expression returning the untransformed
 #'   timeseries data frame (NULL for ctas sample data).
+#' @param rctv_queries Reactive expression returning the query data frame
+#'   (NULL when no queries are available).
 #' @export
 mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
-                                   rctv_untransformed = shiny::reactiveVal(NULL)) {
+                                   rctv_untransformed = shiny::reactiveVal(NULL),
+                                   rctv_queries = shiny::reactiveVal(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -243,9 +268,16 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       res <- rctv_ctas_results()
       shiny::req(res, res$site_scores)
       feats <- sort(unique(res$site_scores$feature))
+      cfg_defaults <- get_default_features()
+      sel <- if (!is.null(cfg_defaults)) {
+        intersect(cfg_defaults, feats)
+      } else {
+        feats
+      }
+      if (length(sel) == 0) sel <- feats
       shiny::updateCheckboxGroupInput(
         session, "selected_features",
-        choices = feats, selected = feats
+        choices = feats, selected = sel
       )
     })
 
@@ -525,6 +557,8 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       thresh <- input$thresh %||% 0
       visit_order <- rctv_visit_order_applied()
 
+      qd <- rctv_queries()
+
       if (plot_type == "categorical") {
         plot_categorical(param_ids, df, thresh = thresh,
                          visit_order = visit_order)
@@ -532,7 +566,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         plot_bar(param_ids, df, thresh = thresh,
                  visit_order = visit_order)
       } else {
-        plot_timeseries(param_ids, df, thresh = thresh)
+        plot_timeseries(param_ids, df, thresh = thresh, query_data = qd)
       }
     }, res = 96)
 
@@ -561,6 +595,61 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
       DT::datatable(
         ts_data,
+        filter = "top",
+        rownames = FALSE,
+        extensions = "Buttons",
+        options = list(
+          pageLength = 25,
+          lengthMenu = c(5, 10, 25, 50, 100),
+          dom = "Blfrtip",
+          buttons = c("copy", "csv", "excel"),
+          scrollX = TRUE
+        )
+      )
+    })
+
+    # -- Query data table -------------------------------------------------------
+    output$query_table <- DT::renderDataTable({
+      qd <- rctv_queries()
+      shiny::validate(shiny::need(
+        !is.null(qd) && nrow(qd) > 0,
+        "No query data available for this dataset."
+      ))
+      shiny::req(input$selected_param)
+
+      param_ids <- get_param_ids()
+      param_ids <- filter_param_ids(param_ids)
+      shiny::req(length(param_ids) > 0)
+
+      df <- rctv_measures_feat()
+      thresh <- input$thresh %||% 1.3
+      outlier_sites <- df |>
+        dplyr::filter(.data$parameter_id %in% param_ids) |>
+        dplyr::filter(.data$max_score > thresh) |>
+        dplyr::distinct(.data$site) |>
+        dplyr::pull(.data$site)
+
+      subj_site <- df |>
+        dplyr::distinct(.data$subject_id, .data$site)
+
+      q_filtered <- qd |>
+        dplyr::filter(.data$parameter_id %in% param_ids) |>
+        dplyr::left_join(subj_site, by = "subject_id") |>
+        dplyr::filter(.data$site %in% outlier_sites) |>
+        dplyr::select(
+          "site", "subject_id", "visit", "domain", "field",
+          "query_status", "query_type", "data_change",
+          "query_text", "query_answer",
+          "value_first_entry", "value_now"
+        )
+
+      shiny::validate(shiny::need(
+        nrow(q_filtered) > 0,
+        "No queries for outlier sites on this parameter."
+      ))
+
+      DT::datatable(
+        q_filtered,
         filter = "top",
         rownames = FALSE,
         extensions = "Buttons",
