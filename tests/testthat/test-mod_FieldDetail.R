@@ -37,6 +37,11 @@ test_that("build_param_lookup groups labs by parameter_category_2", {
   # Bar groups
   wt <- lookup[lookup$display_id == "VS_WEIGHT_CAT", ]
   expect_equal(wt$plot_type, "bar")
+
+  # cat3_values present
+  expect_true("cat3_values" %in% names(lookup))
+  expect_equal(sort(alb$cat3_values[[1]]), c("range_normalized", "ratio_missing"))
+  expect_equal(rs$cat3_values[[1]], "categorical")
 })
 
 test_that("build_param_lookup splits independent params with same category_2", {
@@ -400,6 +405,154 @@ test_that("mod_FieldDetail_server regular score table renders for SDTM lab", {
 
       tbl <- output$score_table_regular
       expect_true(!is.null(tbl))
+    }
+  )
+})
+
+
+test_that("plot_type_icon returns flask for range_normalized", {
+  expect_equal(plot_type_icon("numeric", c("range_normalized", "ratio_missing")), "flask")
+  expect_equal(plot_type_icon("numeric", "range_normalized"), "flask")
+})
+
+test_that("plot_type_icon returns chart-line for plain numeric", {
+  expect_equal(plot_type_icon("numeric", "numeric"), "chart-line")
+})
+
+test_that("plot_type_icon returns chart-bar for bar", {
+  expect_equal(plot_type_icon("bar", "bar"), "chart-bar")
+})
+
+test_that("plot_type_icon returns water for categorical", {
+  expect_equal(plot_type_icon("categorical", "categorical"), "water")
+})
+
+
+test_that("mod_FieldDetail_server rctv_visit_order populated for categorical param", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      cat_id <- lookup$display_id[lookup$plot_type == "categorical"][1]
+      session$setInputs(selected_param = cat_id)
+
+      lvls <- rctv_visit_order()
+      expect_type(lvls, "character")
+      expect_true(length(lvls) > 0)
+
+      # applied order initialised to same default
+      expect_identical(rctv_visit_order_applied(), lvls)
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server rctv_visit_order is NULL for numeric param", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      num_id <- lookup$display_id[lookup$plot_type == "numeric"][1]
+      session$setInputs(selected_param = num_id)
+
+      expect_null(rctv_visit_order())
+      expect_null(rctv_visit_order_applied())
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server apply_visit_order commits order to plot", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      cat_id <- lookup$display_id[lookup$plot_type == "categorical"][1]
+      session$setInputs(selected_param = cat_id)
+
+      original <- rctv_visit_order()
+      shiny::req(length(original) >= 2)
+
+      # Simulate moving first item down
+      session$setInputs(visit_move = list(idx = 1L, dir = "down"))
+
+      # Live order should be swapped, applied order should be unchanged
+      swapped <- rctv_visit_order()
+      expect_equal(swapped[1], original[2])
+      expect_equal(swapped[2], original[1])
+      expect_identical(rctv_visit_order_applied(), original)
+
+      # Simulate moving second item up (covers the "up" branch)
+      session$setInputs(visit_move = list(idx = 2L, dir = "up"))
+      back <- rctv_visit_order()
+      expect_identical(back, original)
+
+      # Click apply -- applied order catches up
+      session$setInputs(apply_visit_order = 1L)
+      expect_identical(rctv_visit_order_applied(), original)
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server feature selection filters scores", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  all_feats <- sort(unique(sample_sdtm_results$site_scores$feature))
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(
+        thresh = 1.3,
+        include_miss = TRUE,
+        selected_features = all_feats
+      )
+      session$flushReact()
+
+      mf_all <- rctv_measures_feat()
+      expect_equal(mf_all$max_score, m$max_score)
+
+      # All features selected -> get_selected_features() returns NULL
+      expect_null(get_selected_features())
+
+      # Select a single feature (subset) -- exercises get_selected_features()
+      session$setInputs(selected_features = all_feats[1])
+      session$flushReact()
+
+      mf_one <- rctv_measures_feat()
+      expect_true(all(mf_one$max_score <= m$max_score))
+
+      # get_selected_features() should return the subset
+      sf <- get_selected_features()
+      expect_equal(sf, all_feats[1])
     }
   )
 })

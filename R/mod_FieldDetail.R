@@ -1,8 +1,8 @@
 #' Field Detail Module - UI
 #'
-#' Sidebar with threshold slider, missingness toggle, and clickable parameter
-#' list. Main content flows like a webpage: pill-tabbed score tables,
-#' timeseries plot, then data table.
+#' Sidebar with threshold slider, missingness toggle, feature selector, and
+#' clickable parameter list with datatype icons. Main content flows like a
+#' webpage: pill-tabbed score tables, timeseries plot, then data table.
 #'
 #' @param id Module namespace ID.
 #' @export
@@ -19,6 +19,14 @@ mod_FieldDetail_ui <- function(id) {
         min = 0, max = 10, value = 1.3, step = 0.1
       ),
       shiny::checkboxInput(ns("include_miss"), "Include Missingness", value = TRUE),
+      bslib::accordion(
+        bslib::accordion_panel(
+          "ctas Features",
+          shiny::checkboxGroupInput(ns("selected_features"), label = NULL,
+                                    choices = NULL, selected = NULL)
+        ),
+        open = FALSE
+      ),
       shiny::hr(),
       shiny::uiOutput(ns("param_list"))
     ),
@@ -29,7 +37,14 @@ mod_FieldDetail_ui <- function(id) {
       bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
     ),
     shiny::hr(),
-    shiny::plotOutput(ns("ts_plot"), height = "700px"),
+    shiny::fluidRow(
+      shiny::column(10, shiny::plotOutput(ns("ts_plot"), height = "700px")),
+      shiny::column(
+        2,
+        style = "max-height:700px;overflow-y:auto;",
+        shiny::uiOutput(ns("visit_sorter"))
+      )
+    ),
     shiny::hr(),
     shiny::h5("Timeseries Data (Outlier Sites)"),
     DT::dataTableOutput(ns("ts_data_table"))
@@ -49,9 +64,12 @@ mod_FieldDetail_ui <- function(id) {
 #' (e.g. two independent numeric params with the same generic category),
 #' they are kept separate using `parameter_id` as the display key.
 #'
+#' Now also includes a `cat3_values` list column with raw `parameter_category_3`
+#' values for icon determination.
+#'
 #' @param df Measures data frame.
 #' @return A data frame with `display_id`, `parameter_ids` (list column),
-#'   and `plot_type`.
+#'   `plot_type`, and `cat3_values` (list column).
 #' @keywords internal
 build_param_lookup <- function(df) {
   param_meta <- df |>
@@ -62,6 +80,7 @@ build_param_lookup <- function(df) {
     dplyr::summarise(
       parameter_ids = list(.data$parameter_id),
       plot_type = determine_plot_type(.data$parameter_category_3),
+      cat3_values = list(unique(.data$parameter_category_3)),
       n_cat3 = dplyr::n_distinct(.data$parameter_category_3),
       .by = "parameter_category_2"
     )
@@ -81,6 +100,7 @@ build_param_lookup <- function(df) {
       dplyr::summarise(
         parameter_ids = list(.data$parameter_id),
         plot_type = dplyr::first(.data$parameter_category_3),
+        cat3_values = list(unique(.data$parameter_category_3)),
         n_cat3 = 1L,
         .by = "parameter_id"
       ) |>
@@ -90,7 +110,8 @@ build_param_lookup <- function(df) {
   }
 
   keep |>
-    dplyr::select("parameter_category_2", "parameter_ids", "plot_type") |>
+    dplyr::select("parameter_category_2", "parameter_ids", "plot_type",
+                   "cat3_values") |>
     dplyr::rename(display_id = "parameter_category_2")
 }
 
@@ -109,6 +130,25 @@ determine_plot_type <- function(cat3) {
   numeric_types <- c("numeric", "range_normalized", "ratio_missing")
   if (all(types %in% numeric_types)) return("numeric")
   types[1]
+}
+
+
+#' Map plot type to a Font Awesome icon name
+#'
+#' Uses raw `parameter_category_3` values to distinguish range-normalized
+#' labs (flask) from plain numeric timeseries (chart-line).
+#'
+#' @param plot_type Character scalar from [build_param_lookup()].
+#' @param cat3_values Character vector of raw `parameter_category_3` values.
+#' @return Character scalar Font Awesome icon name.
+#' @keywords internal
+plot_type_icon <- function(plot_type, cat3_values) {
+  if (any(cat3_values == "range_normalized")) return("flask")
+  switch(plot_type,
+    categorical = "water",
+    bar = "chart-bar",
+    "chart-line"
+  )
 }
 
 
@@ -157,7 +197,7 @@ render_score_dt <- function(scores_display, thresh) {
       pageLength = 10,
       lengthMenu = c(5, 10, 25, 50, 100),
       dom = "Blfrtip",
-      buttons = c("csv", "excel"),
+      buttons = c("copy", "csv", "excel"),
       scrollX = TRUE,
       order = list(list(which(names(scores_display) == "max_score") - 1, "desc")),
       searchCols = search_cols
@@ -184,7 +224,8 @@ render_score_dt <- function(scores_display, thresh) {
 #' Renders a clickable list of parameters in the sidebar. On selection,
 #' shows pill-tabbed score tables (regular + missingness), the timeseries
 #' plot, and a raw data table for outlier sites. Auto-detects plot type
-#' from `parameter_category_3`.
+#' from `parameter_category_3`. Supports feature sub-selection via
+#' checkbox group.
 #'
 #' @param id Module namespace ID.
 #' @param rctv_measures Reactive expression returning the measures data frame.
@@ -197,8 +238,34 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # -- Populate feature checkboxes from loaded data --------------------------
+    shiny::observeEvent(rctv_ctas_results(), {
+      res <- rctv_ctas_results()
+      shiny::req(res, res$site_scores)
+      feats <- sort(unique(res$site_scores$feature))
+      shiny::updateCheckboxGroupInput(
+        session, "selected_features",
+        choices = feats, selected = feats
+      )
+    })
+
+    # -- Measures with max_score recomputed for selected features --------------
+    rctv_measures_feat <- shiny::reactive({
+      m <- rctv_measures()
+      shiny::req(m)
+      res <- rctv_ctas_results()
+      shiny::req(res)
+      feats <- input$selected_features
+      if (is.null(feats) || length(feats) == 0) return(m)
+
+      all_feats <- sort(unique(res$site_scores$feature))
+      if (identical(sort(feats), all_feats)) return(m)
+
+      recompute_max_score(m, res, features = feats)
+    })
+
     rctv_param_lookup <- shiny::reactive({
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       shiny::req(df)
       build_param_lookup(df)
     })
@@ -217,13 +284,13 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     filter_param_ids <- function(param_ids) {
       include_miss <- input$include_miss %||% TRUE
       if (include_miss) return(param_ids)
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       splits <- split_param_ids(param_ids, df)
       splits$regular
     }
 
     param_outliers <- shiny::reactive({
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       shiny::req(df)
       lookup <- rctv_param_lookup()
       thresh <- input$thresh %||% 1.3
@@ -263,11 +330,21 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     output$param_list <- shiny::renderUI({
       stats <- param_outliers()
       shiny::req(stats)
+      lookup <- rctv_param_lookup()
 
       labels <- unname(lapply(stats$display_id, function(pid) {
         n_out <- stats$n_outlier_sites[stats$display_id == pid]
         badge_class <- if (n_out > 0) "badge bg-warning text-dark ms-1" else "badge bg-light text-muted ms-1"
+
+        row_idx <- which(lookup$display_id == pid)
+        icon_name <- if (length(row_idx) == 1) {
+          plot_type_icon(lookup$plot_type[row_idx], lookup$cat3_values[[row_idx]])
+        } else {
+          "chart-line" # nocov
+        }
+
         htmltools::tagList(
+          shiny::icon(icon_name, class = "text-muted me-1"),
           pid,
           shiny::tags$span(class = badge_class, n_out)
         )
@@ -287,20 +364,33 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       if (is.null(p)) "Select a parameter" else paste("Parameter:", p)
     })
 
+    # -- Helper: get selected features for score table -------------------------
+    get_selected_features <- function() {
+      feats <- input$selected_features
+      if (is.null(feats) || length(feats) == 0) return(NULL)
+      res <- rctv_ctas_results()
+      shiny::req(res)
+      all_feats <- sort(unique(res$site_scores$feature))
+      if (identical(sort(feats), all_feats)) return(NULL)
+      feats
+    }
+
     # -- Regular score table (pill tab 1) --------------------------------------
     output$score_table_regular <- DT::renderDataTable({
       res <- rctv_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       thresh <- input$thresh %||% 1.3
+      feats <- get_selected_features()
 
       splits <- split_param_ids(param_ids, df)
       shiny::validate(shiny::need(
         length(splits$regular) > 0,
         "No regular (non-missingness) parameters for this field."
       ))
-      scores_display <- prepare_score_table_multi(res, splits$regular)
+      scores_display <- prepare_score_table_multi(res, splits$regular,
+                                                  features = feats)
       shiny::validate(shiny::need(
         nrow(scores_display) > 0,
         "No outlier scores available (too few timepoints for ctas to compute features)."
@@ -313,15 +403,17 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       res <- rctv_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       thresh <- input$thresh %||% 1.3
+      feats <- get_selected_features()
 
       splits <- split_param_ids(param_ids, df)
       shiny::validate(shiny::need(
         length(splits$missingness) > 0,
         "No missingness parameters for this field."
       ))
-      scores_display <- prepare_score_table_multi(res, splits$missingness)
+      scores_display <- prepare_score_table_multi(res, splits$missingness,
+                                                  features = feats)
       shiny::validate(shiny::need(
         nrow(scores_display) > 0,
         "No missingness scores available (too few timepoints for ctas to compute features)."
@@ -329,9 +421,96 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       render_score_dt(scores_display, thresh)
     })
 
+    # -- Visit sorter (arrow buttons for categorical/bar x-axis) ---------------
+    # rctv_visit_order: live state edited by arrow buttons (drives the UI list)
+    # rctv_visit_order_applied: confirmed state used by the plot (updated on Apply)
+    rctv_visit_order <- shiny::reactiveVal(NULL)
+    rctv_visit_order_applied <- shiny::reactiveVal(NULL)
+
+    shiny::observe({
+      shiny::req(input$selected_param)
+      lookup <- rctv_param_lookup()
+      sel <- input$selected_param
+      match_row <- lookup$display_id == sel
+      shiny::req(any(match_row))
+      plot_type <- lookup$plot_type[match_row]
+      if (!plot_type %in% c("categorical", "bar")) {
+        rctv_visit_order(NULL)
+        rctv_visit_order_applied(NULL)
+        return()
+      }
+      df <- rctv_measures_feat()
+      param_ids <- lookup$parameter_ids[match_row][[1]]
+      default <- get_plot_visit_levels(param_ids, df, plot_type = plot_type)
+      rctv_visit_order(default)
+      rctv_visit_order_applied(default)
+    })
+
+    shiny::observeEvent(input$visit_move, {
+      msg <- input$visit_move
+      lvls <- rctv_visit_order()
+      shiny::req(lvls)
+      i <- msg$idx
+      if (msg$dir == "up" && i > 1) {
+        lvls[c(i - 1, i)] <- lvls[c(i, i - 1)]
+      }
+      if (msg$dir == "down" && i < length(lvls)) {
+        lvls[c(i, i + 1)] <- lvls[c(i + 1, i)]
+      }
+      rctv_visit_order(lvls)
+    })
+
+    shiny::observeEvent(input$apply_visit_order, {
+      rctv_visit_order_applied(rctv_visit_order())
+    })
+
+    output$visit_sorter <- shiny::renderUI({
+      lvls <- rctv_visit_order()
+      if (is.null(lvls) || length(lvls) == 0) return(NULL)
+      n <- length(lvls)
+      move_id <- ns("visit_move")
+
+      rows <- lapply(seq_len(n), function(i) {
+        up_disabled <- if (i == 1) "disabled" else NULL
+        dn_disabled <- if (i == n) "disabled" else NULL
+        shiny::tags$div(
+          style = "display:flex;align-items:center;gap:4px;margin:1px 0;",
+          shiny::tags$button(
+            shiny::icon("arrow-up"),
+            onclick = sprintf(
+              "Shiny.setInputValue('%s',{idx:%d,dir:'up'},{priority:'event'})",
+              move_id, i
+            ),
+            class = "btn btn-sm btn-outline-secondary py-0 px-1",
+            disabled = up_disabled
+          ),
+          shiny::tags$button(
+            shiny::icon("arrow-down"),
+            onclick = sprintf(
+              "Shiny.setInputValue('%s',{idx:%d,dir:'down'},{priority:'event'})",
+              move_id, i
+            ),
+            class = "btn btn-sm btn-outline-secondary py-0 px-1",
+            disabled = dn_disabled
+          ),
+          shiny::tags$span(lvls[i], style = "font-size:.85em;")
+        )
+      })
+
+      shiny::tagList(
+        shiny::tags$p(shiny::tags$small("Reorder visits:")),
+        shiny::tags$div(rows),
+        shiny::actionButton(
+          ns("apply_visit_order"), "Apply order",
+          icon = shiny::icon("refresh"),
+          class = "btn btn-sm btn-primary mt-2"
+        )
+      )
+    })
+
     # -- Timeseries / categorical / bar plot -----------------------------------
     output$ts_plot <- shiny::renderPlot({
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       shiny::req(df)
       shiny::req(input$selected_param)
 
@@ -344,11 +523,14 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       param_ids <- filter_param_ids(param_ids)
       shiny::req(length(param_ids) > 0)
       thresh <- input$thresh %||% 0
+      visit_order <- rctv_visit_order_applied()
 
       if (plot_type == "categorical") {
-        plot_categorical(param_ids, df, thresh = thresh)
+        plot_categorical(param_ids, df, thresh = thresh,
+                         visit_order = visit_order)
       } else if (plot_type == "bar") {
-        plot_bar(param_ids, df, thresh = thresh)
+        plot_bar(param_ids, df, thresh = thresh,
+                 visit_order = visit_order)
       } else {
         plot_timeseries(param_ids, df, thresh = thresh)
       }
@@ -356,7 +538,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
     # -- Timeseries data table for outlier sites -------------------------------
     output$ts_data_table <- DT::renderDataTable({
-      df <- rctv_measures()
+      df <- rctv_measures_feat()
       shiny::req(df)
       shiny::req(input$selected_param)
 
@@ -386,7 +568,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
           pageLength = 25,
           lengthMenu = c(5, 10, 25, 50, 100),
           dom = "Blfrtip",
-          buttons = c("csv", "excel"),
+          buttons = c("copy", "csv", "excel"),
           scrollX = TRUE
         )
       )

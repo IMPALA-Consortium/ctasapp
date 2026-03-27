@@ -4,12 +4,14 @@
 \alias{prepare_score_table_multi}
 \title{Prepare wide score table for multiple parameter IDs}
 \usage{
-prepare_score_table_multi(ctas_results, parameter_ids)
+prepare_score_table_multi(ctas_results, parameter_ids, features = NULL)
 }
 \arguments{
 \item{ctas_results}{List as returned by \code{\link[ctas:process_a_study]{ctas::process_a_study()}}.}
 
 \item{parameter_ids}{Character vector of parameter IDs.}
+
+\item{features}{Character vector of feature names to include, or NULL for all.}
 }
 \value{
 A data frame with columns: site, one per feature, max_score.

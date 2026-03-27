@@ -229,6 +229,52 @@ format_score <- function(score) {
 }
 
 
+#' Compute x-axis visit levels for categorical/bar plots
+#'
+#' Returns the ordered visit labels as they appear on the plot axis,
+#' including duplicate-handling expansions for categorical data (e.g.
+#' "WEEK 6" becomes "WEEK 6 01", "WEEK 6 02" when a patient has
+#' multiple observations at that visit).
+#'
+#' @param param_ids Character vector of parameter_id values.
+#' @param df_measures Data frame as returned by [prepare_measures()].
+#' @param plot_type Either `"categorical"` or `"bar"`.
+#' @return Character vector of visit labels in `timepoint_rank` order.
+#' @export
+get_plot_visit_levels <- function(param_ids, df_measures, plot_type = "categorical") {
+  df <- df_measures |>
+    dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
+    dplyr::filter(.data$result == 1)
+
+  if (nrow(df) == 0) return(character(0))
+
+  if (plot_type == "categorical") {
+    df <- df |>
+      dplyr::mutate(
+        n_per_tp = dplyr::n(),
+        .by = c("subject_id", "timepoint_1_name")
+      ) |>
+      dplyr::mutate(
+        timepoint_1_name = ifelse(
+          .data$n_per_tp > 1,
+          paste(
+            .data$timepoint_1_name,
+            stringr::str_pad(.data$timepoint_rank, width = 2,
+                             side = "left", pad = "0")
+          ),
+          .data$timepoint_1_name
+        )
+      )
+  }
+
+  df |>
+    dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
+    dplyr::arrange(.data$timepoint_rank) |>
+    dplyr::pull(.data$timepoint_1_name) |>
+    unique()
+}
+
+
 #' Plot categorical timeseries as alluvial diagram
 #'
 #' Uses `ggalluvial::geom_flow()` and `geom_stratum()` to show how patients
@@ -241,10 +287,13 @@ format_score <- function(score) {
 #' @param df_measures Data frame as returned by [prepare_measures()].
 #' @param thresh Numeric, score threshold for flagging.
 #' @param sites Character vector of site IDs to show. If NULL, auto-selected.
+#' @param visit_order Character vector of visit labels in desired x-axis order,
+#'   or NULL for default (timepoint_rank) ordering.
 #'
 #' @return A ggplot object.
 #' @export
-plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
+plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
+                             visit_order = NULL) {
 
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
@@ -299,13 +348,22 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
                     .data$timepoint_rank, .data$val_cat) |>
     dplyr::arrange(.data$subject_id, .data$timepoint_rank)
 
-  # Order x-axis by timepoint_rank (avoids lexical misordering of visit names)
-  visit_levels <- df_plot |>
+  # Order x-axis: use custom visit_order if provided, else timepoint_rank
+  default_levels <- df_plot |>
     dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
     dplyr::arrange(.data$timepoint_rank) |>
-    dplyr::pull(.data$timepoint_1_name)
+    dplyr::pull(.data$timepoint_1_name) |>
+    unique()
+
+  if (!is.null(visit_order) &&
+      length(visit_order) > 0 &&
+      all(default_levels %in% visit_order)) {
+    visit_levels <- visit_order[visit_order %in% default_levels]
+  } else {
+    visit_levels <- default_levels
+  }
   df_plot$timepoint_1_name <- factor(
-    df_plot$timepoint_1_name, levels = unique(visit_levels)
+    df_plot$timepoint_1_name, levels = visit_levels
   )
 
   # Try alluvial, fall back to bar on error
@@ -437,10 +495,13 @@ plot_cat_bar_ci <- function(df_plot) {
 #' @param df_measures Data frame as returned by [prepare_measures()].
 #' @param thresh Numeric, score threshold for highlighting.
 #' @param sites Character vector of site IDs to show. If NULL, auto-selected.
+#' @param visit_order Character vector of visit labels in desired x-axis order,
+#'   or NULL for default (timepoint_rank) ordering.
 #'
 #' @return A ggplot object.
 #' @export
-plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
+plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
+                     visit_order = NULL) {
 
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
@@ -478,12 +539,21 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
     dplyr::distinct(.data$subject_id, .data$site_label, .data$timepoint_1_name,
                     .data$timepoint_rank, .data$val_cat)
 
-  visit_levels <- df_gr |>
+  default_levels <- df_gr |>
     dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
     dplyr::arrange(.data$timepoint_rank) |>
-    dplyr::pull(.data$timepoint_1_name)
+    dplyr::pull(.data$timepoint_1_name) |>
+    unique()
+
+  if (!is.null(visit_order) &&
+      length(visit_order) > 0 &&
+      all(default_levels %in% visit_order)) {
+    visit_levels <- visit_order[visit_order %in% default_levels]
+  } else {
+    visit_levels <- default_levels
+  }
   df_gr$timepoint_1_name <- factor(
-    df_gr$timepoint_1_name, levels = unique(visit_levels)
+    df_gr$timepoint_1_name, levels = visit_levels
   )
 
   if (dplyr::n_distinct(df_gr$timepoint_1_name) > 3) {

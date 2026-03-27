@@ -194,6 +194,45 @@ test_that("prepare_ts_data_multi preserves row count with untransformed", {
   expect_equal(nrow(td_with), nrow(td_without))
 })
 
+test_that("recompute_max_score with NULL features returns same max_score", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m2 <- recompute_max_score(m, sample_ctas_results, features = NULL)
+  expect_equal(m2$max_score, m$max_score)
+})
+
+test_that("recompute_max_score with subset features changes max_score", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  all_feats <- unique(sample_sdtm_results$site_scores$feature)
+  one_feat <- all_feats[1]
+
+  m2 <- recompute_max_score(m, sample_sdtm_results, features = one_feat)
+  expect_true(all(m2$max_score <= m$max_score))
+  expect_true(all(m2$max_score >= 0))
+})
+
+test_that("recompute_max_score with non-existent feature zeroes scores", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m2 <- recompute_max_score(m, sample_ctas_results, features = "nonexistent_feat")
+  expect_true(all(m2$max_score == 0))
+})
+
+test_that("prepare_score_table_multi features param filters columns", {
+  all_feats <- unique(sample_sdtm_results$site_scores$feature)
+  one_feat <- all_feats[1]
+
+  params <- unique(sample_sdtm_results$timeseries$parameter_id)[1]
+  st_all <- prepare_score_table_multi(sample_sdtm_results, params)
+  st_one <- prepare_score_table_multi(sample_sdtm_results, params,
+                                      features = one_feat)
+
+  all_feat_cols <- setdiff(names(st_all), c("site", "max_score"))
+  one_feat_cols <- setdiff(names(st_one), c("site", "max_score"))
+
+  expect_true(length(all_feat_cols) >= length(one_feat_cols))
+  expect_true(all(one_feat_cols %in% all_feat_cols))
+})
+
+
 test_that("VS_HEIGHT has scores in SDTM sample results", {
   ts <- sample_sdtm_results$timeseries
   expect_true("VS_HEIGHT" %in% ts$parameter_id)

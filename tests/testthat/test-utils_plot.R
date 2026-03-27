@@ -101,6 +101,34 @@ test_that("format_score handles vectors", {
   expect_type(result, "character")
 })
 
+test_that("get_plot_visit_levels returns visit labels for categorical with dup handling", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    levels <- get_plot_visit_levels(cat_params, m, plot_type = "categorical")
+    expect_type(levels, "character")
+    expect_true(length(levels) > 0)
+  }
+})
+
+test_that("get_plot_visit_levels returns visit labels for bar without dup handling", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+
+  if (length(bar_params) > 0) {
+    levels <- get_plot_visit_levels(bar_params, m, plot_type = "bar")
+    expect_type(levels, "character")
+    expect_true(length(levels) > 0)
+  }
+})
+
+test_that("get_plot_visit_levels returns empty for non-existent params", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  levels <- get_plot_visit_levels("NONEXIST=X", m, plot_type = "categorical")
+  expect_length(levels, 0)
+})
+
 test_that("plot_categorical returns ggplot (alluvial or bar fallback)", {
   m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
   cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
@@ -284,6 +312,68 @@ test_that("plot_categorical falls back to CI bars when alluvial fails (<=3 tps)"
   local_mocked_bindings(try_alluvial = function(df_plot) NULL)
   p <- plot_categorical(c("TEST=A", "TEST=B"), m_synth, thresh = 0)
   expect_s3_class(p, "ggplot")
+})
+
+test_that("plot_categorical respects custom visit_order", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    p_default <- plot_categorical(cat_params, m, thresh = 0)
+    expect_s3_class(p_default, "ggplot")
+
+    visit_labels <- m |>
+      dplyr::filter(.data$parameter_id %in% cat_params) |>
+      dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
+      dplyr::arrange(.data$timepoint_rank) |>
+      dplyr::pull(.data$timepoint_1_name) |>
+      unique()
+
+    reversed <- rev(visit_labels)
+    p_reorder <- plot_categorical(cat_params, m, thresh = 0,
+                                  visit_order = reversed)
+    expect_s3_class(p_reorder, "ggplot")
+  }
+})
+
+test_that("plot_categorical ignores incomplete visit_order", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+
+  if (length(cat_params) > 0) {
+    p <- plot_categorical(cat_params, m, thresh = 0,
+                          visit_order = c("NONEXISTENT_VISIT"))
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_bar respects custom visit_order", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+
+  if (length(bar_params) > 0) {
+    visit_labels <- m |>
+      dplyr::filter(.data$parameter_id %in% bar_params) |>
+      dplyr::distinct(.data$timepoint_1_name, .data$timepoint_rank) |>
+      dplyr::arrange(.data$timepoint_rank) |>
+      dplyr::pull(.data$timepoint_1_name) |>
+      unique()
+
+    reversed <- rev(visit_labels)
+    p <- plot_bar(bar_params, m, thresh = 0, visit_order = reversed)
+    expect_s3_class(p, "ggplot")
+  }
+})
+
+test_that("plot_bar ignores incomplete visit_order", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+
+  if (length(bar_params) > 0) {
+    p <- plot_bar(bar_params, m, thresh = 0,
+                  visit_order = c("NONEXISTENT"))
+    expect_s3_class(p, "ggplot")
+  }
 })
 
 test_that("plot_cat_bar_stacked works with many timepoints in plot_bar dispatch", {

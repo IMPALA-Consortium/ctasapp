@@ -11,7 +11,7 @@ build_param_lookup(df)
 }
 \value{
 A data frame with \code{display_id}, \code{parameter_ids} (list column),
-and \code{plot_type}.
+\code{plot_type}, and \code{cat3_values} (list column).
 }
 \description{
 Groups parameters by \code{parameter_category_2} (the "field" key). This
@@ -25,5 +25,8 @@ When multiple parameters share a \code{parameter_category_2} but have
 identical \code{parameter_category_3} values that aren't meant to be grouped
 (e.g. two independent numeric params with the same generic category),
 they are kept separate using \code{parameter_id} as the display key.
+
+Now also includes a \code{cat3_values} list column with raw \code{parameter_category_3}
+values for icon determination.
 }
 \keyword{internal}
