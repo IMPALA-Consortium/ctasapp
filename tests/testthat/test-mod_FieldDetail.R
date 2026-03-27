@@ -427,6 +427,30 @@ test_that("plot_type_icon returns water for categorical", {
   expect_equal(plot_type_icon("categorical", "categorical"), "water")
 })
 
+test_that("plot_type_icon uses config icons when available", {
+  on.exit(apply_config(default_config()), add = TRUE)
+
+  cfg <- default_config()
+  cfg$icons$range_normalized <- "vial"
+  cfg$icons$bar <- "chart-column"
+  apply_config(cfg)
+
+  expect_equal(plot_type_icon("numeric", "range_normalized"), "vial")
+  expect_equal(plot_type_icon("bar", "bar"), "chart-column")
+  expect_equal(plot_type_icon("categorical", "categorical"), "water")
+  expect_equal(plot_type_icon("numeric", "numeric"), "chart-line")
+})
+
+test_that("plot_type_icon falls back when config icons NULL", {
+  on.exit(apply_config(default_config()), add = TRUE)
+
+  .cfg_env$icons <- NULL
+  expect_equal(plot_type_icon("numeric", "range_normalized"), "flask")
+  expect_equal(plot_type_icon("categorical", "categorical"), "water")
+  expect_equal(plot_type_icon("bar", "bar"), "chart-bar")
+  expect_equal(plot_type_icon("numeric", "numeric"), "chart-line")
+})
+
 
 test_that("mod_FieldDetail_server rctv_visit_order populated for categorical param", {
   m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
@@ -553,6 +577,81 @@ test_that("mod_FieldDetail_server feature selection filters scores", {
       # get_selected_features() should return the subset
       sf <- get_selected_features()
       expect_equal(sf, all_feats[1])
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server selects all features when config defaults NULL", {
+  old_def <- .cfg_env$default_features
+  .cfg_env$default_features <- NULL
+  on.exit(.cfg_env$default_features <- old_def, add = TRUE)
+
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  all_feats <- sort(unique(sample_sdtm_results$site_scores$feature))
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(
+        thresh = 1.3,
+        include_miss = TRUE,
+        selected_features = all_feats
+      )
+      session$flushReact()
+      expect_equal(sort(input$selected_features), all_feats)
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server query_table renders for SDTM data", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  qd <- sample_sdtm_data$queries
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_queries = shiny::reactiveVal(qd)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      num_id <- lookup$display_id[lookup$plot_type == "numeric"][1]
+      session$setInputs(selected_param = num_id)
+
+      tbl <- output$query_table
+      expect_true(!is.null(tbl))
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server query_table shows message when no queries", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_queries = shiny::reactiveVal(NULL)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      num_id <- lookup$display_id[lookup$plot_type == "numeric"][1]
+      session$setInputs(selected_param = num_id)
+
+      expect_error(output$query_table, "No query data")
     }
   )
 })

@@ -2,9 +2,14 @@
 #'
 #' Launches the interactive ctas visualization application.
 #'
+#' @param config Path to a YAML configuration file. When `NULL` (default),
+#'   uses the config shipped with the package. See [load_config()] for the
+#'   expected structure.
 #' @param ... Additional arguments passed to [shiny::shinyApp()].
 #' @export
-run_ctas_app <- function(...) {
+run_ctas_app <- function(config = NULL, ...) {
+  cfg <- load_config(config)
+  apply_config(cfg)
 
   ui <- bslib::page_navbar(
     title = "ctas",
@@ -25,7 +30,8 @@ run_ctas_app <- function(...) {
   server <- function(input, output, session) {
     data <- mod_DataInput_server("data_input")
     mod_FieldDetail_server(
-      "field_detail", data$measures, data$ctas_results, data$untransformed
+      "field_detail", data$measures, data$ctas_results, data$untransformed,
+      data$queries
     )
   }
 

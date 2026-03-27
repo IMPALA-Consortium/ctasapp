@@ -4,7 +4,13 @@
 \alias{plot_timeseries_panel}
 \title{Single panel of timeseries plot for a group of sites}
 \usage{
-plot_timeseries_panel(df, thresh, sites, has_range_norm = FALSE)
+plot_timeseries_panel(
+  df,
+  thresh,
+  sites,
+  has_range_norm = FALSE,
+  query_data = NULL
+)
 }
 \arguments{
 \item{df}{Data frame, pre-filtered with site-level score columns.}
@@ -14,6 +20,8 @@ plot_timeseries_panel(df, thresh, sites, has_range_norm = FALSE)
 \item{sites}{Character vector of sites to facet.}
 
 \item{has_range_norm}{Logical, whether to add 0/1 reference lines.}
+
+\item{query_data}{Optional query data frame for dot overlay.}
 }
 \value{
 A ggplot object.

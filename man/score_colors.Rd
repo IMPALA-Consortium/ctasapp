@@ -6,9 +6,12 @@
 \alias{SCORE_BREAKS}
 \alias{SCORE_COLORS_PLOT}
 \alias{SCORE_COLORS_TABLE}
+\alias{SCORE_COLORS_TABLE_TEXT}
 \title{Score colour constants}
 \format{
 An object of class \code{numeric} of length 4.
+
+An object of class \code{character} of length 5.
 
 An object of class \code{character} of length 5.
 
@@ -20,10 +23,15 @@ SCORE_BREAKS
 SCORE_COLORS_PLOT
 
 SCORE_COLORS_TABLE
+
+SCORE_COLORS_TABLE_TEXT
 }
 \description{
-Breakpoints and colour vectors shared between DT table styling and
-ggplot2 plot colouring. \code{SCORE_COLORS_PLOT} uses "royalblue" for
-below-threshold; \code{SCORE_COLORS_TABLE} uses "white".
+Breakpoints and colour vectors for DT table styling and ggplot2 plot
+colouring. Below-threshold uses soft green; outlier bands graduate from
+yellow to red. \code{SCORE_COLORS_TABLE} uses white for the first band and
+yellow-to-red for outliers. \code{SCORE_COLORS_TABLE_TEXT} provides foreground
+colours for DT cells. Query dots use light purple (no change) and blue
+(data change). These can be overridden at runtime via \code{\link[=apply_config]{apply_config()}}.
 }
 \keyword{datasets}

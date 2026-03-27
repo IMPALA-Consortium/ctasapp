@@ -4,7 +4,13 @@
 \alias{plot_timeseries}
 \title{Plot numeric timeseries for one or more parameters}
 \usage{
-plot_timeseries(param_ids, df_measures, thresh = 0, sites = NULL)
+plot_timeseries(
+  param_ids,
+  df_measures,
+  thresh = 0,
+  sites = NULL,
+  query_data = NULL
+)
 }
 \arguments{
 \item{param_ids}{Character vector of \code{parameter_id} values to include.}
@@ -14,6 +20,10 @@ plot_timeseries(param_ids, df_measures, thresh = 0, sites = NULL)
 \item{thresh}{Numeric, score threshold for flagging. Default: 0.}
 
 \item{sites}{Character vector of site IDs to highlight. If NULL, auto-selected.}
+
+\item{query_data}{Optional data frame of query records. When provided, queried
+data points are overlaid with medium purple (no change) or indigo
+(data change) dots.}
 }
 \value{
 A ggplot2/patchwork object.

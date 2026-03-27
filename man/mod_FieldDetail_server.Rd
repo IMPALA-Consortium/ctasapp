@@ -8,7 +8,8 @@ mod_FieldDetail_server(
   id,
   rctv_measures,
   rctv_ctas_results,
-  rctv_untransformed = shiny::reactiveVal(NULL)
+  rctv_untransformed = shiny::reactiveVal(NULL),
+  rctv_queries = shiny::reactiveVal(NULL)
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ mod_FieldDetail_server(
 
 \item{rctv_untransformed}{Reactive expression returning the untransformed
 timeseries data frame (NULL for ctas sample data).}
+
+\item{rctv_queries}{Reactive expression returning the query data frame
+(NULL when no queries are available).}
 }
 \description{
 Renders a clickable list of parameters in the sidebar. On selection,

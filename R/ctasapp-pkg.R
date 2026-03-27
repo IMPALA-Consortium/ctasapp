@@ -23,4 +23,5 @@
 #' @importFrom htmltools tagList
 #' @importFrom stats quantile IQR prop.test
 #' @importFrom grDevices pdf dev.off
+#' @importFrom yaml read_yaml
 NULL

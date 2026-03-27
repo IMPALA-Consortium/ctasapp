@@ -3,9 +3,12 @@
 
 #' Score colour constants
 #'
-#' Breakpoints and colour vectors shared between DT table styling and
-#' ggplot2 plot colouring. `SCORE_COLORS_PLOT` uses "royalblue" for
-#' below-threshold; `SCORE_COLORS_TABLE` uses "white".
+#' Breakpoints and colour vectors for DT table styling and ggplot2 plot
+#' colouring. Below-threshold uses soft green; outlier bands graduate from
+#' yellow to red. `SCORE_COLORS_TABLE` uses white for the first band and
+#' yellow-to-red for outliers. `SCORE_COLORS_TABLE_TEXT` provides foreground
+#' colours for DT cells. Query dots use light purple (no change) and blue
+#' (data change). These can be overridden at runtime via [apply_config()].
 #'
 #' @name score_colors
 #' @export
@@ -13,11 +16,15 @@ SCORE_BREAKS <- c(1.3, 3, 5, 10)
 
 #' @rdname score_colors
 #' @export
-SCORE_COLORS_PLOT <- c("royalblue", "#fff3cd", "#ffcc80", "#ff9800", "#e65100")
+SCORE_COLORS_PLOT <- c("#9ED782", "#fed8019c", "#fed801", "#FEAA01", "#FF5858")
 
 #' @rdname score_colors
 #' @export
-SCORE_COLORS_TABLE <- c("white", "#fff3cd", "#ffcc80", "#ff9800", "#e65100")
+SCORE_COLORS_TABLE <- c("#FFFFFF", "#feed01", "#fed801", "#FEAA01", "#FF5858")
+
+#' @rdname score_colors
+#' @export
+SCORE_COLORS_TABLE_TEXT <- c("#1A1A1A", "#1A1A1A", "#1A1A1A", "#FFFFFF", "#FFFFFF")
 
 
 #' Map a numeric score to its graduated colour
@@ -29,8 +36,10 @@ SCORE_COLORS_TABLE <- c("white", "#fff3cd", "#ffcc80", "#ff9800", "#e65100")
 #' @return Character vector of hex / named colours.
 #' @export
 score_to_color <- function(score) {
-  idx <- findInterval(score, SCORE_BREAKS) + 1L
-  SCORE_COLORS_PLOT[idx]
+  brks <- get_score_breaks()
+  cols <- get_score_colors_plot()
+  idx <- findInterval(score, brks) + 1L
+  cols[idx]
 }
 
 
@@ -45,10 +54,14 @@ score_to_color <- function(score) {
 #' @param df_measures Data frame as returned by [prepare_measures()].
 #' @param thresh Numeric, score threshold for flagging. Default: 0.
 #' @param sites Character vector of site IDs to highlight. If NULL, auto-selected.
+#' @param query_data Optional data frame of query records. When provided, queried
+#'   data points are overlaid with medium purple (no change) or indigo
+#'   (data change) dots.
 #'
 #' @return A ggplot2/patchwork object.
 #' @export
-plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
+plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL,
+                            query_data = NULL) {
 
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
@@ -94,7 +107,8 @@ plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
 
   plot_list <- lapply(split(sites, group_vec), function(site_group) {
     plot_timeseries_panel(df, thresh = thresh, sites = site_group,
-                          has_range_norm = has_range_norm)
+                          has_range_norm = has_range_norm,
+                          query_data = query_data)
   })
 
   param_cat2 <- unique(df$parameter_category_2)
@@ -105,8 +119,8 @@ plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
     patchwork::plot_annotation(
       title = title_str,
       subtitle = paste0(
-        "warm colors: sites with outlier score > ", thresh, " (per parameter)",
-        "\nblue: sites at or below threshold"
+        "orange to red: sites with outlier score > ", thresh, " (per parameter)",
+        "\ngreen: sites at or below threshold"
       )
     ) +
     patchwork::plot_layout(axes = "collect")
@@ -124,9 +138,11 @@ plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL) {
 #' @param thresh Numeric threshold.
 #' @param sites Character vector of sites to facet.
 #' @param has_range_norm Logical, whether to add 0/1 reference lines.
+#' @param query_data Optional query data frame for dot overlay.
 #' @return A ggplot object.
 #' @keywords internal
-plot_timeseries_panel <- function(df, thresh, sites, has_range_norm = FALSE) {
+plot_timeseries_panel <- function(df, thresh, sites, has_range_norm = FALSE,
+                                  query_data = NULL) {
 
   # Per-parameter max_score determines bland/outlier colouring (applytsoa style)
   df_bland <- df |>
@@ -208,6 +224,28 @@ plot_timeseries_panel <- function(df, thresh, sites, has_range_norm = FALSE) {
     ggplot2::labs(x = "Timepoint", y = "Value") +
     ggplot2::theme_minimal() +
     ggplot2::theme(legend.position = "none")
+
+  if (!is.null(query_data) && nrow(query_data) > 0) {
+    df_q <- df_out |>
+      dplyr::inner_join(
+        query_data[, c("subject_id", "parameter_id",
+                        "visit", "data_change")],
+        by = c("subject_id", "parameter_id",
+               timepoint_1_name = "visit"),
+        relationship = "many-to-many"
+      )
+    if (nrow(df_q) > 0) {
+      qcols <- get_query_colors()
+      df_q$query_color <- ifelse(df_q$data_change, qcols$data_change,
+                                 qcols$no_change)
+      p <- p +
+        ggplot2::geom_point(
+          data = df_q,
+          ggplot2::aes(.data$timepoint_rank, .data$result,
+                       color = .data$query_color)
+        )
+    }
+  }
 
   p
 }

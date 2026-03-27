@@ -54,6 +54,7 @@ mod_DataInput_server <- function(id) {
     rv_measures <- shiny::reactiveVal(NULL)
     rv_ctas_results <- shiny::reactiveVal(NULL)
     rv_untransformed <- shiny::reactiveVal(NULL)
+    rv_queries <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(input$load_sample, {
       choice <- input$dataset_choice %||% "ctas"
@@ -72,6 +73,7 @@ mod_DataInput_server <- function(id) {
       rv_measures(measures)
       rv_ctas_results(ctas_results)
       rv_untransformed(ctas_data$untransformed)
+      rv_queries(ctas_data$queries)
       shiny::showNotification(
         paste0("Loaded ", label, " data: ", nrow(measures), " observations"),
         type = "message",
@@ -103,7 +105,8 @@ mod_DataInput_server <- function(id) {
     list(
       measures = rv_measures,
       ctas_results = rv_ctas_results,
-      untransformed = rv_untransformed
+      untransformed = rv_untransformed,
+      queries = rv_queries
     )
   })
 }

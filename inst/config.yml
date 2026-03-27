@@ -1,0 +1,23 @@
+colors:
+  score_breaks: [1.3, 3, 5, 10]
+  plot: ["#9ED782", "#fed8019c", "#fed801", "#FEAA01", "#FF5858"]
+  table: ["#FFFFFF", "#feed01", "#fed801", "#FEAA01", "#FF5858"]
+  table_text: ["#1A1A1A", "#1A1A1A", "#1A1A1A", "#FFFFFF", "#FFFFFF"]
+  query_no_change: "#a380e9"
+  query_data_change: "#2790e0"
+
+icons:
+  range_normalized: flask
+  numeric: chart-line
+  categorical: water
+  bar: chart-bar
+
+features:
+  default:
+    - autocorr
+    - average
+    # - own_site_simil_score
+    - sd
+    - unique_value_count_relative
+    - lof
+    - range

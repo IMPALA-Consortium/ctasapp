@@ -1,5 +1,7 @@
 library(ctas)
 
+pkgload::load_all(".", export_all = FALSE)
+
 data("ctas_data", package = "ctas")
 
 feats <- paste(
@@ -30,6 +32,7 @@ ctas_results <- process_a_study(
 )
 
 sample_ctas_data <- ctas_data[c("data", "subjects", "parameters")]
+sample_ctas_data$queries <- simulate_query_data(sample_ctas_data, seed = 456)
 sample_ctas_results <- ctas_results
 
 usethis::use_data(sample_ctas_data, overwrite = TRUE)
