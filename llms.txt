@@ -1,0 +1,191 @@
+# ctasapp
+
+Interactive Shiny application for exploring results from the
+[{ctas}](https://github.com/IMPALA-Consortium/ctas) (Clinical Timeseries
+Anomaly Spotter) R package. Provides drill-down visualizations of
+site-level outlier scores and subject-level time series data.
+
+## Installation
+
+You can install the development version of ctasapp from
+[GitHub](https://github.com/IMPALA-Consortium/ctasapp) with:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("IMPALA-Consortium/ctasapp")
+```
+
+## Usage
+
+Launch the app with bundled sample data:
+
+``` r
+library(ctasapp)
+run_ctas_app()
+```
+
+Once the app is running, click **Use Sample Data** on the Data tab, then
+switch to the **Fields** tab to explore parameter-level timeseries and
+site outlier scores.
+
+## AI Disclaimer
+
+This package and documentation were developed with assistance from AI
+tools, including Cursor and Claude Opus 4.6. All AI-generated content
+has been reviewed.
+
+## Quality Control
+
+Since {ctas} is designed for use in a
+[GCP](https://en.wikipedia.org/wiki/Good_clinical_practice) framework,
+we have conducted extensive quality control as part of our development
+process. In particular, we do the following during early development:
+
+- **Unit Tests** - Unit tests are written for all core functions, 100%
+  coverage required.
+- **Workflow Tests** -
+  [`shiny::testServer()`](https://rdrr.io/pkg/shiny/man/testServer.html)
+  tests verify that Shiny module logic behaves as expected.
+- **Function Documentation** - Detailed documentation for each exported
+  function is maintained with Roxygen.
+- **Package Checks** - Standard package checks are run using GitHub
+  Actions and must be passing before PRs are merged.
+- **Continuous Integration** - Continuous integration is provided via
+  GitHub Actions.
+- **Code Formatting** - Code is formatted with {styler} before each
+  release.
+- **Contributor Guidelines** - Contributor guidelines including
+  step-by-step processes for code development are provided as a
+  [vignette](https://impala-consortium.github.io/ctasapp/articles/ContributorGuidelines.html).
+
+### Parking
+
+As development progresses, we will also conduct the following quality
+control steps:
+
+- **Qualification Workflow** - All assessments will be Qualified as
+  described in a Qualification Workflow Vignette. A Qualification Report
+  Vignette will be generated and attached to each release.
+- **Code Review** - Code review is conducted using GitHub Pull Requests
+  (PRs), and a log of all PRs will be included in the Qualification
+  Report Vignette.
+- **Regression Testing** - Extensive QC and testing will be done before
+  each release.
+- **End-to-End Tests** - Browser-based tests using {shinytest2} will
+  validate the full user interaction flow.
+
+# Package index
+
+## All functions
+
+- [`Input_BMI()`](https://IMPALA-Consortium.github.io/ctasapp/reference/Input_BMI.md)
+  : Create ctas input for screening weight categories from VS
+- [`Input_Labs()`](https://IMPALA-Consortium.github.io/ctasapp/reference/Input_Labs.md)
+  : Create ctas input from SDTM LB domain
+- [`Input_RS()`](https://IMPALA-Consortium.github.io/ctasapp/reference/Input_RS.md)
+  : Create ctas input from SDTM RS oncology domain
+- [`Input_VS()`](https://IMPALA-Consortium.github.io/ctasapp/reference/Input_VS.md)
+  : Create ctas input from SDTM VS domain
+- [`apply_config()`](https://IMPALA-Consortium.github.io/ctasapp/reference/apply_config.md)
+  : Apply configuration to package runtime state
+- [`arrange_timepoints()`](https://IMPALA-Consortium.github.io/ctasapp/reference/arrange_timepoints.md)
+  : Arrange visit names into clinically meaningful order
+- [`combine_ctas_input()`](https://IMPALA-Consortium.github.io/ctasapp/reference/combine_ctas_input.md)
+  : Combine multiple ctas input lists
+- [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md)
+  : One-hot encode a categorical variable
+- [`get_default_features()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_default_features.md)
+  : Get default features from configuration
+- [`get_param_icons()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_param_icons.md)
+  : Get parameter type icon mapping from configuration
+- [`get_plot_visit_levels()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_plot_visit_levels.md)
+  : Compute x-axis visit levels for categorical/bar plots
+- [`get_query_colors()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_query_colors.md)
+  : Get query dot colours from configuration
+- [`get_score_breaks()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_score_breaks.md)
+  : Get score breaks from configuration
+- [`get_score_colors_plot()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_score_colors_plot.md)
+  : Get score colours for plots from configuration
+- [`get_score_colors_table()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_score_colors_table.md)
+  : Get score colours for tables from configuration
+- [`get_score_colors_table_text()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_score_colors_table_text.md)
+  : Get score text colours for tables from configuration
+- [`inject_missingness()`](https://IMPALA-Consortium.github.io/ctasapp/reference/inject_missingness.md)
+  : Inject random missingness into LB data for specific site/parameter
+  combos
+- [`load_config()`](https://IMPALA-Consortium.github.io/ctasapp/reference/load_config.md)
+  : Load app configuration from a YAML file
+- [`mod_DataInput_server()`](https://IMPALA-Consortium.github.io/ctasapp/reference/mod_DataInput_server.md)
+  : Data Input Module - Server
+- [`mod_DataInput_ui()`](https://IMPALA-Consortium.github.io/ctasapp/reference/mod_DataInput_ui.md)
+  : Data Input Module - UI
+- [`mod_FieldDetail_server()`](https://IMPALA-Consortium.github.io/ctasapp/reference/mod_FieldDetail_server.md)
+  : Field Detail Module - Server
+- [`mod_FieldDetail_ui()`](https://IMPALA-Consortium.github.io/ctasapp/reference/mod_FieldDetail_ui.md)
+  : Field Detail Module - UI
+- [`normalize_by_range()`](https://IMPALA-Consortium.github.io/ctasapp/reference/normalize_by_range.md)
+  : Normalize values by reference range
+- [`plot_bar()`](https://IMPALA-Consortium.github.io/ctasapp/reference/plot_bar.md)
+  : Plot single-timepoint categorical data as a bar chart
+- [`plot_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/plot_categorical.md)
+  : Plot categorical timeseries as alluvial diagram
+- [`plot_timeseries()`](https://IMPALA-Consortium.github.io/ctasapp/reference/plot_timeseries.md)
+  : Plot numeric timeseries for one or more parameters
+- [`prepare_measures()`](https://IMPALA-Consortium.github.io/ctasapp/reference/prepare_measures.md)
+  : Prepare measures table from ctas input and results
+- [`prepare_score_table()`](https://IMPALA-Consortium.github.io/ctasapp/reference/prepare_score_table.md)
+  : Prepare wide score table for a single parameter
+- [`prepare_score_table_multi()`](https://IMPALA-Consortium.github.io/ctasapp/reference/prepare_score_table_multi.md)
+  : Prepare wide score table for multiple parameter IDs
+- [`prepare_ts_data()`](https://IMPALA-Consortium.github.io/ctasapp/reference/prepare_ts_data.md)
+  : Prepare timeseries data for outlier sites
+- [`prepare_ts_data_multi()`](https://IMPALA-Consortium.github.io/ctasapp/reference/prepare_ts_data_multi.md)
+  : Prepare timeseries data for outlier sites (multiple parameters)
+- [`ratio_missing_over_time()`](https://IMPALA-Consortium.github.io/ctasapp/reference/ratio_missing_over_time.md)
+  : Running ratio of missing values over time
+- [`read_upload_file()`](https://IMPALA-Consortium.github.io/ctasapp/reference/read_upload_file.md)
+  : Read a single uploaded file into a data frame
+- [`recalculate_timepoint_rank()`](https://IMPALA-Consortium.github.io/ctasapp/reference/recalculate_timepoint_rank.md)
+  : Recalculate timepoint rank as positional integer
+- [`recompute_max_score()`](https://IMPALA-Consortium.github.io/ctasapp/reference/recompute_max_score.md)
+  : Recompute max_score in measures using a subset of ctas features
+- [`reconstruct_from_upload()`](https://IMPALA-Consortium.github.io/ctasapp/reference/reconstruct_from_upload.md)
+  : Reconstruct ctas data structures from flat upload files
+- [`run_ctas_app()`](https://IMPALA-Consortium.github.io/ctasapp/reference/run_ctas_app.md)
+  : Run the ctas Shiny App
+- [`sample_ctas_data`](https://IMPALA-Consortium.github.io/ctasapp/reference/sample_ctas_data.md)
+  : Sample ctas input data
+- [`sample_ctas_results`](https://IMPALA-Consortium.github.io/ctasapp/reference/sample_ctas_results.md)
+  : Sample ctas analysis results
+- [`sample_sdtm_data`](https://IMPALA-Consortium.github.io/ctasapp/reference/sample_sdtm_data.md)
+  : Sample SDTM-derived ctas input data
+- [`sample_sdtm_results`](https://IMPALA-Consortium.github.io/ctasapp/reference/sample_sdtm_results.md)
+  : Sample SDTM-derived ctas analysis results
+- [`SCORE_BREAKS`](https://IMPALA-Consortium.github.io/ctasapp/reference/score_colors.md)
+  [`SCORE_COLORS_PLOT`](https://IMPALA-Consortium.github.io/ctasapp/reference/score_colors.md)
+  [`SCORE_COLORS_TABLE`](https://IMPALA-Consortium.github.io/ctasapp/reference/score_colors.md)
+  [`SCORE_COLORS_TABLE_TEXT`](https://IMPALA-Consortium.github.io/ctasapp/reference/score_colors.md)
+  : Score colour constants
+- [`score_to_color()`](https://IMPALA-Consortium.github.io/ctasapp/reference/score_to_color.md)
+  : Map a numeric score to its graduated colour
+- [`simulate_query_data()`](https://IMPALA-Consortium.github.io/ctasapp/reference/simulate_query_data.md)
+  : Simulate clinical query data for a ctas input dataset
+- [`validate_upload_crossfile()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_crossfile.md)
+  : Cross-validate uploaded files
+- [`validate_upload_input()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_input.md)
+  : Validate uploaded input file
+- [`validate_upload_queries()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_queries.md)
+  : Validate uploaded queries file
+- [`validate_upload_results()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_results.md)
+  : Validate uploaded results file
+- [`validate_upload_untransformed()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_untransformed.md)
+  : Validate uploaded untransformed file
+
+# Articles
+
+### All vignettes
+
+- [Contributor
+  Guidelines](https://IMPALA-Consortium.github.io/ctasapp/articles/ContributorGuidelines.md):
+- [User
+  Guide](https://IMPALA-Consortium.github.io/ctasapp/articles/UserGuide.md):
