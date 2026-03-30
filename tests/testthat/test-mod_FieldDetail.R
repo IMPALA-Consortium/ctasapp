@@ -118,7 +118,8 @@ test_that("mod_FieldDetail_server renders outputs with ctas sample", {
 
       session$setInputs(selected_param = stats$display_id[1])
       expect_type(output$plot_title, "character")
-      expect_true(grepl("Parameter:", output$plot_title))
+      expect_true(nchar(output$plot_title) > 0)
+      expect_true(grepl(stats$display_id[1], output$plot_title, fixed = TRUE))
     }
   )
 })
@@ -652,6 +653,120 @@ test_that("mod_FieldDetail_server query_table shows message when no queries", {
       session$setInputs(selected_param = num_id)
 
       expect_error(output$query_table, "No query data")
+    }
+  )
+})
+
+
+test_that("plot_title includes dataset_label and study when selected", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results),
+      rctv_dataset_label = shiny::reactiveVal("My Dataset"),
+      rctv_studies = shiny::reactiveVal(c("STUDY-001", "STUDY-002"))
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE,
+                        study_filter = "STUDY-001")
+      session$flushReact()
+
+      stats <- param_outliers()
+      session$setInputs(selected_param = stats$display_id[1])
+      session$flushReact()
+
+      title <- output$plot_title
+      expect_true(grepl("My Dataset", title, fixed = TRUE))
+      expect_true(grepl("Study: STUDY-001", title, fixed = TRUE))
+      expect_true(grepl(stats$display_id[1], title, fixed = TRUE))
+    }
+  )
+})
+
+
+test_that("plot_title omits study when no filter or all studies", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results),
+      rctv_dataset_label = shiny::reactiveVal("ctas sample"),
+      rctv_studies = shiny::reactiveVal(NULL)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      session$flushReact()
+
+      stats <- param_outliers()
+      session$setInputs(selected_param = stats$display_id[1])
+
+      title <- output$plot_title
+      expect_true(grepl("ctas sample", title, fixed = TRUE))
+      expect_false(grepl("Study:", title, fixed = TRUE))
+    }
+  )
+})
+
+
+test_that("study filter properly filters measures, ctas_results, untransformed, and queries", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  subjects <- unique(m$subject_id)
+  half <- ceiling(length(subjects) / 2)
+  subj_a <- subjects[seq_len(half)]
+  subj_b <- subjects[(half + 1):length(subjects)]
+
+  m$study <- ifelse(m$subject_id %in% subj_a, "ST-A", "ST-B")
+
+  ut <- sample_sdtm_data$untransformed
+  ut_subj <- unique(ut$subject_id)
+  ut$study_label <- ifelse(ut$subject_id %in% subj_a, "ST-A", "ST-B")
+
+  qd <- sample_sdtm_data$queries
+  if (!is.null(qd)) {
+    qd_subj <- unique(qd$subject_id)
+  }
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_untransformed = shiny::reactiveVal(ut),
+      rctv_queries = shiny::reactiveVal(qd),
+      rctv_dataset_label = shiny::reactiveVal("multi"),
+      rctv_studies = shiny::reactiveVal(c("ST-A", "ST-B"))
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE,
+                        study_filter = "ST-A")
+      session$flushReact()
+
+      filtered_m <- flt_measures()
+      expect_true(all(filtered_m$subject_id %in% subj_a))
+      expect_true(nrow(filtered_m) < nrow(m))
+
+      filtered_res <- flt_ctas_results()
+      sites_a <- unique(filtered_m$site)
+      expect_true(all(filtered_res$site_scores$site %in% sites_a))
+
+      filtered_ut <- flt_untransformed()
+      if (!is.null(filtered_ut)) {
+        expect_true(all(filtered_ut$subject_id %in% subj_a))
+      }
+
+      filtered_qd <- flt_queries()
+      if (!is.null(filtered_qd)) {
+        expect_true(all(filtered_qd$subject_id %in% subj_a))
+      }
+
+      study_val <- rctv_study()
+      expect_equal(study_val, "ST-A")
     }
   )
 })

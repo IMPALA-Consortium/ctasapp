@@ -9,7 +9,9 @@ mod_FieldDetail_server(
   rctv_measures,
   rctv_ctas_results,
   rctv_untransformed = shiny::reactiveVal(NULL),
-  rctv_queries = shiny::reactiveVal(NULL)
+  rctv_queries = shiny::reactiveVal(NULL),
+  rctv_dataset_label = shiny::reactiveVal(NULL),
+  rctv_studies = shiny::reactiveVal(NULL)
 )
 }
 \arguments{
@@ -24,6 +26,13 @@ timeseries data frame (NULL for ctas sample data).}
 
 \item{rctv_queries}{Reactive expression returning the query data frame
 (NULL when no queries are available).}
+
+\item{rctv_dataset_label}{Reactive expression returning the dataset label
+string (e.g. "ctas sample", "SDTM sample", or a user filename).}
+
+\item{rctv_studies}{Reactive expression returning a character vector of
+available study names, or NULL when data has no study column or only
+one study.}
 }
 \description{
 Renders a clickable list of parameters in the sidebar. On selection,
