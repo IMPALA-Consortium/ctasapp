@@ -251,3 +251,247 @@ test_that("VS_WEIGHT_CAT has scores in SDTM sample results", {
   expect_true(nrow(st) > 0)
   expect_true(any(st$max_score > 0))
 })
+
+
+# -- validate_upload_results ---------------------------------------------------
+
+test_that("validate_upload_results passes for valid data", {
+  df <- data.frame(
+    site = "A", timeseries_id = "ts1", parameter_id = "p1",
+    feature = "autocorr", fdr_corrected_pvalue_logp = 2.5,
+    stringsAsFactors = FALSE
+  )
+  expect_length(validate_upload_results(df), 0)
+})
+
+test_that("validate_upload_results catches non-dataframe", {
+  errs <- validate_upload_results("not a df")
+  expect_length(errs, 1)
+  expect_true(grepl("data frame", errs))
+})
+
+test_that("validate_upload_results catches missing columns", {
+  df <- data.frame(site = "A", feature = "sd")
+  errs <- validate_upload_results(df)
+  expect_true(any(grepl("missing columns", errs)))
+})
+
+test_that("validate_upload_results catches non-numeric score", {
+  df <- data.frame(
+    site = "A", timeseries_id = "ts1", parameter_id = "p1",
+    feature = "sd", fdr_corrected_pvalue_logp = "bad",
+    stringsAsFactors = FALSE
+  )
+  errs <- validate_upload_results(df)
+  expect_true(any(grepl("numeric", errs)))
+})
+
+# -- validate_upload_input -----------------------------------------------------
+
+test_that("validate_upload_input passes for valid data", {
+  df <- data.frame(
+    subject_id = "S1", site = "A", parameter_id = "p1",
+    parameter_name = "Param1", parameter_category_3 = "numeric",
+    timepoint_1_name = "V1", timepoint_rank = 1, result = 5.0,
+    stringsAsFactors = FALSE
+  )
+  expect_length(validate_upload_input(df), 0)
+})
+
+test_that("validate_upload_input catches non-dataframe", {
+  errs <- validate_upload_input(42)
+  expect_length(errs, 1)
+})
+
+test_that("validate_upload_input catches missing columns", {
+  df <- data.frame(subject_id = "S1")
+  errs <- validate_upload_input(df)
+  expect_true(any(grepl("missing columns", errs)))
+})
+
+test_that("validate_upload_input catches non-numeric result", {
+  df <- data.frame(
+    subject_id = "S1", site = "A", parameter_id = "p1",
+    parameter_name = "Param1", parameter_category_3 = "numeric",
+    timepoint_1_name = "V1", timepoint_rank = 1, result = "bad",
+    stringsAsFactors = FALSE
+  )
+  errs <- validate_upload_input(df)
+  expect_true(any(grepl("result.*numeric", errs)))
+})
+
+test_that("validate_upload_input catches non-numeric timepoint_rank", {
+  df <- data.frame(
+    subject_id = "S1", site = "A", parameter_id = "p1",
+    parameter_name = "Param1", parameter_category_3 = "numeric",
+    timepoint_1_name = "V1", timepoint_rank = "bad", result = 5.0,
+    stringsAsFactors = FALSE
+  )
+  errs <- validate_upload_input(df)
+  expect_true(any(grepl("timepoint_rank.*numeric", errs)))
+})
+
+test_that("validate_upload_input accepts any parameter_category_3 value", {
+  df <- data.frame(
+    subject_id = "S1", site = "A", parameter_id = "p1",
+    parameter_name = "Param1", parameter_category_3 = "category 3",
+    timepoint_1_name = "V1", timepoint_rank = 1, result = 5.0,
+    stringsAsFactors = FALSE
+  )
+  expect_length(validate_upload_input(df), 0)
+})
+
+# -- validate_upload_untransformed ---------------------------------------------
+
+test_that("validate_upload_untransformed passes for valid data", {
+  df <- data.frame(
+    subject_id = "S1", parameter_category_2 = "ALT",
+    timepoint_1_name = "V1", original_value = 10.0
+  )
+  expect_length(validate_upload_untransformed(df), 0)
+})
+
+test_that("validate_upload_untransformed catches non-dataframe", {
+  errs <- validate_upload_untransformed(list(a = 1))
+  expect_length(errs, 1)
+})
+
+test_that("validate_upload_untransformed catches missing columns", {
+  df <- data.frame(subject_id = "S1")
+  errs <- validate_upload_untransformed(df)
+  expect_true(any(grepl("missing columns", errs)))
+})
+
+# -- validate_upload_queries ---------------------------------------------------
+
+test_that("validate_upload_queries passes for valid data", {
+  df <- data.frame(
+    subject_id = "S1", parameter_id = "p1", visit = "V1",
+    data_change = TRUE, stringsAsFactors = FALSE
+  )
+  expect_length(validate_upload_queries(df), 0)
+})
+
+test_that("validate_upload_queries catches non-dataframe", {
+  errs <- validate_upload_queries(NULL)
+  expect_length(errs, 1)
+})
+
+test_that("validate_upload_queries catches missing columns", {
+  df <- data.frame(subject_id = "S1")
+  errs <- validate_upload_queries(df)
+  expect_true(any(grepl("missing columns", errs)))
+})
+
+test_that("validate_upload_queries catches non-logical data_change", {
+  df <- data.frame(
+    subject_id = "S1", parameter_id = "p1", visit = "V1",
+    data_change = "yes", stringsAsFactors = FALSE
+  )
+  errs <- validate_upload_queries(df)
+  expect_true(any(grepl("logical", errs)))
+})
+
+# -- validate_upload_crossfile -------------------------------------------------
+
+test_that("validate_upload_crossfile returns empty for clean data", {
+  results_df <- data.frame(
+    site = "A", parameter_id = "p1",
+    stringsAsFactors = FALSE
+  )
+  input_df <- data.frame(
+    site = "A", parameter_id = "p1",
+    stringsAsFactors = FALSE
+  )
+  warns <- validate_upload_crossfile(input_df, results_df)
+  expect_length(warns, 0)
+})
+
+test_that("validate_upload_crossfile catches orphan parameter_ids in results", {
+  results_df <- data.frame(
+    site = "A", parameter_id = c("p1", "p_orphan"),
+    stringsAsFactors = FALSE
+  )
+  input_df <- data.frame(
+    site = "A", parameter_id = "p1",
+    stringsAsFactors = FALSE
+  )
+  warns <- validate_upload_crossfile(input_df, results_df)
+  expect_true(any(grepl("parameter_id", warns)))
+})
+
+test_that("validate_upload_crossfile catches orphan sites in results", {
+  results_df <- data.frame(
+    site = c("A", "B"), parameter_id = "p1",
+    stringsAsFactors = FALSE
+  )
+  input_df <- data.frame(
+    site = "A", parameter_id = "p1",
+    stringsAsFactors = FALSE
+  )
+  warns <- validate_upload_crossfile(input_df, results_df)
+  expect_true(any(grepl("site", warns)))
+})
+
+# -- reconstruct_from_upload ---------------------------------------------------
+
+test_that("reconstruct_from_upload builds valid ctas structures", {
+  input_df <- data.frame(
+    subject_id = "S1", site = "A", parameter_id = "p1",
+    parameter_name = "Param1", parameter_category_1 = "cat1",
+    parameter_category_2 = "ALT", parameter_category_3 = "numeric",
+    timepoint_1_name = "V1", timepoint_rank = 1, result = 5.0,
+    timepoint_2_name = NA_character_, baseline = NA_real_,
+    country = "US", region = "North", study = "STUDY-001",
+    stringsAsFactors = FALSE
+  )
+  results_df <- data.frame(
+    site = "A", timeseries_id = "ts1", parameter_id = "p1",
+    feature = "sd", fdr_corrected_pvalue_logp = 3.0,
+    stringsAsFactors = FALSE
+  )
+
+  out <- reconstruct_from_upload(input_df, results_df)
+
+  expect_type(out, "list")
+  expect_true("ctas_data" %in% names(out))
+  expect_true("ctas_results" %in% names(out))
+
+  cd <- out$ctas_data
+  expect_true(all(c("data", "subjects", "parameters") %in% names(cd)))
+  expect_true("study" %in% names(cd$subjects))
+  expect_true("site" %in% names(cd$subjects))
+  expect_null(cd$untransformed)
+  expect_null(cd$queries)
+
+  cr <- out$ctas_results
+  expect_true(all(c("site_scores", "timeseries") %in% names(cr)))
+  expect_true("parameter_id" %in% names(cr$timeseries))
+})
+
+test_that("reconstruct_from_upload passes through optional files", {
+  input_df <- data.frame(
+    subject_id = "S1", site = "A", parameter_id = "p1",
+    parameter_name = "Param1", parameter_category_3 = "numeric",
+    timepoint_1_name = "V1", timepoint_rank = 1, result = 5.0,
+    stringsAsFactors = FALSE
+  )
+  results_df <- data.frame(
+    site = "A", timeseries_id = "ts1", parameter_id = "p1",
+    feature = "sd", fdr_corrected_pvalue_logp = 3.0,
+    stringsAsFactors = FALSE
+  )
+  ut_df <- data.frame(
+    subject_id = "S1", parameter_category_2 = "ALT",
+    timepoint_1_name = "V1", original_value = 50.0,
+    stringsAsFactors = FALSE
+  )
+  q_df <- data.frame(
+    subject_id = "S1", parameter_id = "p1", visit = "V1",
+    data_change = FALSE, stringsAsFactors = FALSE
+  )
+
+  out <- reconstruct_from_upload(input_df, results_df, ut_df, q_df)
+  expect_s3_class(out$ctas_data$untransformed, "data.frame")
+  expect_s3_class(out$ctas_data$queries, "data.frame")
+})

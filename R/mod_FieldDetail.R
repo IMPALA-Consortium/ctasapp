@@ -11,8 +11,9 @@ mod_FieldDetail_ui <- function(id) {
   bslib::layout_sidebar(
     fillable = FALSE,
     sidebar = bslib::sidebar(
-      title = "Parameters",
+      title = NULL,
       width = 250,
+      shiny::uiOutput(ns("study_selector")),
       shiny::sliderInput(
         ns("thresh"),
         "Score Threshold",
@@ -256,16 +257,87 @@ render_score_dt <- function(scores_display, thresh) {
 #'   timeseries data frame (NULL for ctas sample data).
 #' @param rctv_queries Reactive expression returning the query data frame
 #'   (NULL when no queries are available).
+#' @param rctv_dataset_label Reactive expression returning the dataset label
+#'   string (e.g. "ctas sample", "SDTM sample", or a user filename).
+#' @param rctv_studies Reactive expression returning a character vector of
+#'   available study names, or NULL when data has no study column or only
+#'   one study.
 #' @export
 mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
                                    rctv_untransformed = shiny::reactiveVal(NULL),
-                                   rctv_queries = shiny::reactiveVal(NULL)) {
+                                   rctv_queries = shiny::reactiveVal(NULL),
+                                   rctv_dataset_label = shiny::reactiveVal(NULL),
+                                   rctv_studies = shiny::reactiveVal(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # -- Populate feature checkboxes from loaded data --------------------------
-    shiny::observeEvent(rctv_ctas_results(), {
+    # -- Study selector (rendered only when multi-study data) -------------------
+    output$study_selector <- shiny::renderUI({
+      studies <- rctv_studies()
+      if (is.null(studies) || length(studies) <= 1) return(NULL)
+      shiny::selectInput(
+        ns("study_filter"),
+        "Study",
+        choices = stats::setNames(studies, studies),
+        selected = studies[1]
+      )
+    })
+
+    # -- Filtered data reactives (study-aware) ---------------------------------
+    flt_measures <- shiny::reactive({
+      m <- rctv_measures()
+      shiny::req(m)
+      sel <- input$study_filter
+      if (is.null(sel) || sel == "__all__" ||
+          !"study" %in% names(m)) return(m)
+      study_subj <- unique(m$subject_id[!is.na(m[["study"]]) &
+                                         m[["study"]] == sel])
+      m[m$subject_id %in% study_subj, ]
+    })
+
+    flt_ctas_results <- shiny::reactive({
       res <- rctv_ctas_results()
+      shiny::req(res)
+      sel <- input$study_filter
+      if (is.null(sel) || sel == "__all__") return(res)
+      m <- flt_measures()
+      study_sites <- unique(m$site)
+      filtered_scores <- res$site_scores[res$site_scores$site %in% study_sites, ]
+      kept_ts <- unique(filtered_scores$timeseries_id)
+      list(
+        site_scores = filtered_scores,
+        timeseries = res$timeseries[res$timeseries$timeseries_id %in% kept_ts, ]
+      )
+    })
+
+    flt_untransformed <- shiny::reactive({
+      ut <- rctv_untransformed()
+      if (is.null(ut)) return(NULL)
+      sel <- input$study_filter
+      if (is.null(sel) || sel == "__all__") return(ut)
+      m <- flt_measures()
+      study_subj <- unique(m$subject_id)
+      ut[ut$subject_id %in% study_subj, ]
+    })
+
+    flt_queries <- shiny::reactive({
+      qd <- rctv_queries()
+      if (is.null(qd)) return(NULL)
+      sel <- input$study_filter
+      if (is.null(sel) || sel == "__all__") return(qd)
+      m <- flt_measures()
+      study_subj <- unique(m$subject_id)
+      qd[qd$subject_id %in% study_subj, ]
+    })
+
+    rctv_study <- shiny::reactive({
+      sel <- input$study_filter
+      if (is.null(sel) || sel == "__all__") NULL else sel
+    })
+
+    # -- Populate feature checkboxes from loaded data --------------------------
+    shiny::observeEvent(flt_ctas_results(), {
+      res <- flt_ctas_results()
       shiny::req(res, res$site_scores)
       feats <- sort(unique(res$site_scores$feature))
       cfg_defaults <- get_default_features()
@@ -283,9 +355,9 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
     # -- Measures with max_score recomputed for selected features --------------
     rctv_measures_feat <- shiny::reactive({
-      m <- rctv_measures()
+      m <- flt_measures()
       shiny::req(m)
-      res <- rctv_ctas_results()
+      res <- flt_ctas_results()
       shiny::req(res)
       feats <- input$selected_features
       if (is.null(feats) || length(feats) == 0) return(m)
@@ -393,14 +465,22 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
     output$plot_title <- shiny::renderText({
       p <- input$selected_param
-      if (is.null(p)) "Select a parameter" else paste("Parameter:", p)
+      if (is.null(p)) return("Select a parameter")
+
+      parts <- character()
+      dl <- rctv_dataset_label()
+      if (!is.null(dl) && nzchar(dl)) parts <- c(parts, dl)
+      st <- rctv_study()
+      if (!is.null(st) && nzchar(st)) parts <- c(parts, paste("Study:", st))
+      parts <- c(parts, p)
+      paste(parts, collapse = " | ")
     })
 
     # -- Helper: get selected features for score table -------------------------
     get_selected_features <- function() {
       feats <- input$selected_features
       if (is.null(feats) || length(feats) == 0) return(NULL)
-      res <- rctv_ctas_results()
+      res <- flt_ctas_results()
       shiny::req(res)
       all_feats <- sort(unique(res$site_scores$feature))
       if (identical(sort(feats), all_feats)) return(NULL)
@@ -409,7 +489,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
     # -- Regular score table (pill tab 1) --------------------------------------
     output$score_table_regular <- DT::renderDataTable({
-      res <- rctv_ctas_results()
+      res <- flt_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
       df <- rctv_measures_feat()
@@ -432,7 +512,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
     # -- Missingness score table (pill tab 2) ----------------------------------
     output$score_table_miss <- DT::renderDataTable({
-      res <- rctv_ctas_results()
+      res <- flt_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
       df <- rctv_measures_feat()
@@ -557,7 +637,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       thresh <- input$thresh %||% 0
       visit_order <- rctv_visit_order_applied()
 
-      qd <- rctv_queries()
+      qd <- flt_queries()
 
       if (plot_type == "categorical") {
         plot_categorical(param_ids, df, thresh = thresh,
@@ -585,7 +665,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       shiny::req(length(param_ids) > 0)
 
       thresh <- input$thresh %||% 1.3
-      untransformed <- rctv_untransformed()
+      untransformed <- flt_untransformed()
       ts_data <- prepare_ts_data_multi(df, param_ids, thresh,
                                        untransformed = untransformed)
       shiny::validate(shiny::need(
@@ -610,7 +690,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
     # -- Query data table -------------------------------------------------------
     output$query_table <- DT::renderDataTable({
-      qd <- rctv_queries()
+      qd <- flt_queries()
       shiny::validate(shiny::need(
         !is.null(qd) && nrow(qd) > 0,
         "No query data available for this dataset."

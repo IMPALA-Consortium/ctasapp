@@ -9,6 +9,8 @@ test_that("run_ctas_app server wires modules correctly", {
     expect_type(data, "list")
     expect_true("measures" %in% names(data))
     expect_true("ctas_results" %in% names(data))
+    expect_true("dataset_label" %in% names(data))
+    expect_true("studies" %in% names(data))
   })
 })
 

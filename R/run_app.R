@@ -11,6 +11,8 @@ run_ctas_app <- function(config = NULL, ...) {
   cfg <- load_config(config)
   apply_config(cfg)
 
+  options(shiny.maxRequestSize = 100 * 1024^2)
+
   ui <- bslib::page_navbar(
     title = "ctas",
     fillable = FALSE,
@@ -31,7 +33,7 @@ run_ctas_app <- function(config = NULL, ...) {
     data <- mod_DataInput_server("data_input")
     mod_FieldDetail_server(
       "field_detail", data$measures, data$ctas_results, data$untransformed,
-      data$queries
+      data$queries, data$dataset_label, data$studies
     )
   }
 

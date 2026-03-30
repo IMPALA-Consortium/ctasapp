@@ -10,7 +10,8 @@ mod_DataInput_ui(id)
 \item{id}{Module namespace ID.}
 }
 \description{
-Lets the user choose between the bundled ctas sample data and the
-pharmaversesdtm-derived SDTM sample data. Upload support is reserved
-for a future version.
+Provides a dropdown to select sample datasets or upload custom files.
+Upload mode is selected by default. When uploading, 2 mandatory file
+inputs (results, input) and 2 optional file inputs (untransformed,
+queries) are shown with collapsible format documentation.
 }

@@ -1,6 +1,6 @@
 Package: ctasapp
 Title: Shiny App to Visualize ctas Output
-Version: 0.0.1
+Version: 0.1.0
 Authors@R:
     person("Björn", "Koneswarakantha", , "bjoern.koneswarakantha@roche.com", role = c("aut", "cre"))
 Description: Interactive Shiny application for exploring results from the
@@ -30,6 +30,7 @@ Imports:
     tidyr,
     yaml
 Suggests:
+    arrow,
     covr,
     ctas,
     knitr,

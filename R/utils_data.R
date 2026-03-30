@@ -257,6 +257,229 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
 }
 
 
+#' Validate uploaded results file
+#'
+#' Checks that a data frame has the columns and types expected for the
+#' pre-joined `site_scores + timeseries` results file.
+#'
+#' @param df Data frame to validate.
+#' @return Character vector of error messages (length-0 means valid).
+#' @export
+validate_upload_results <- function(df) {
+  errs <- character()
+
+  if (!is.data.frame(df)) {
+    return("Results file must be a data frame.")
+  }
+
+  required <- c("site", "timeseries_id", "parameter_id", "feature",
+                 "fdr_corrected_pvalue_logp")
+  missing <- setdiff(required, names(df))
+  if (length(missing) > 0) {
+    errs <- c(errs, paste0("Results file is missing columns: ",
+                            paste(missing, collapse = ", ")))
+  }
+
+  if ("fdr_corrected_pvalue_logp" %in% names(df) &&
+      !is.numeric(df$fdr_corrected_pvalue_logp)) {
+    errs <- c(errs, "Column 'fdr_corrected_pvalue_logp' must be numeric.")
+  }
+
+  errs
+}
+
+
+#' Validate uploaded input file
+#'
+#' Checks that a data frame has the columns and types expected for the
+#' pre-joined `data + subjects + parameters` input file.
+#'
+#' @param df Data frame to validate.
+#' @return Character vector of error messages (length-0 means valid).
+#' @export
+validate_upload_input <- function(df) {
+  errs <- character()
+
+  if (!is.data.frame(df)) {
+    return("Input file must be a data frame.")
+  }
+
+  required <- c("subject_id", "site", "parameter_id", "parameter_name",
+                 "parameter_category_3", "timepoint_1_name",
+                 "timepoint_rank", "result")
+  missing <- setdiff(required, names(df))
+  if (length(missing) > 0) {
+    errs <- c(errs, paste0("Input file is missing columns: ",
+                            paste(missing, collapse = ", ")))
+  }
+
+  if ("result" %in% names(df) && !is.numeric(df$result)) {
+    errs <- c(errs, "Column 'result' must be numeric.")
+  }
+  if ("timepoint_rank" %in% names(df) && !is.numeric(df$timepoint_rank)) {
+    errs <- c(errs, "Column 'timepoint_rank' must be numeric.")
+  }
+
+  errs
+}
+
+
+#' Validate uploaded untransformed file
+#'
+#' Checks that a data frame has the join-key columns required to link
+#' untransformed data back to the input measures.
+#'
+#' @param df Data frame to validate.
+#' @return Character vector of error messages (length-0 means valid).
+#' @export
+validate_upload_untransformed <- function(df) {
+  errs <- character()
+
+  if (!is.data.frame(df)) {
+    return("Untransformed file must be a data frame.")
+  }
+
+  required <- c("subject_id", "parameter_category_2", "timepoint_1_name")
+  missing <- setdiff(required, names(df))
+  if (length(missing) > 0) {
+    errs <- c(errs, paste0("Untransformed file is missing columns: ",
+                            paste(missing, collapse = ", ")))
+  }
+
+  errs
+}
+
+
+#' Validate uploaded queries file
+#'
+#' Checks that a data frame has the columns required for query overlay on
+#' plots and display in the queries table.
+#'
+#' @param df Data frame to validate.
+#' @return Character vector of error messages (length-0 means valid).
+#' @export
+validate_upload_queries <- function(df) {
+  errs <- character()
+
+  if (!is.data.frame(df)) {
+    return("Queries file must be a data frame.")
+  }
+
+  required <- c("subject_id", "parameter_id", "visit", "data_change")
+  missing <- setdiff(required, names(df))
+  if (length(missing) > 0) {
+    errs <- c(errs, paste0("Queries file is missing columns: ",
+                            paste(missing, collapse = ", ")))
+  }
+
+  if ("data_change" %in% names(df) && !is.logical(df$data_change)) {
+    errs <- c(errs, "Column 'data_change' must be logical (TRUE/FALSE).")
+  }
+
+  errs
+}
+
+
+#' Cross-validate uploaded files
+#'
+#' Checks referential integrity between the results and input files:
+#' parameter_ids in input should appear in results, and sites in results
+#' should appear in input.
+#'
+#' @param input_df Input data frame (File 2).
+#' @param results_df Results data frame (File 1).
+#' @return Character vector of warning messages (length-0 means clean).
+#' @export
+validate_upload_crossfile <- function(input_df, results_df) {
+
+  warns <- character()
+
+  result_params <- unique(results_df$parameter_id)
+  input_params <- unique(input_df$parameter_id)
+  orphan_results <- setdiff(result_params, input_params)
+  if (length(orphan_results) > 0) {
+    warns <- c(warns, paste0(
+      length(orphan_results),
+      " parameter_id(s) in results not found in input: ",
+      paste(utils::head(orphan_results, 5), collapse = ", "),
+      if (length(orphan_results) > 5) "..." else ""
+    ))
+  }
+
+  result_sites <- unique(results_df$site)
+  input_sites <- unique(input_df$site)
+  orphan_sites <- setdiff(result_sites, input_sites)
+  if (length(orphan_sites) > 0) {
+    warns <- c(warns, paste0(
+      length(orphan_sites),
+      " site(s) in results not found in input: ",
+      paste(utils::head(orphan_sites, 5), collapse = ", "),
+      if (length(orphan_sites) > 5) "..." else ""
+    ))
+  }
+
+  warns
+}
+
+
+#' Reconstruct ctas data structures from flat upload files
+#'
+#' Takes the flat uploaded data frames and splits them back into the list
+#' structures expected by [prepare_measures()].
+#'
+#' @param input_df Data frame from the input file upload.
+#' @param results_df Data frame from the results file upload.
+#' @param untransformed_df Optional data frame from the untransformed upload.
+#' @param queries_df Optional data frame from the queries upload.
+#'
+#' @return A named list with `ctas_data` and `ctas_results`.
+#' @export
+reconstruct_from_upload <- function(input_df, results_df,
+                                    untransformed_df = NULL,
+                                    queries_df = NULL) {
+
+  data_cols <- c("subject_id", "parameter_id", "timepoint_1_name",
+                 "timepoint_rank", "result")
+  for (opt in c("timepoint_2_name", "baseline")) {
+    if (opt %in% names(input_df)) data_cols <- c(data_cols, opt)
+  }
+
+  subject_cols <- "subject_id"
+  for (opt in c("site", "country", "region", "study")) {
+    if (opt %in% names(input_df)) subject_cols <- c(subject_cols, opt)
+  }
+
+  param_cols <- intersect(
+    c("parameter_id", "parameter_name", "parameter_category_1",
+      "parameter_category_2", "parameter_category_3"),
+    names(input_df)
+  )
+
+  ctas_data <- list(
+    data       = unique(input_df[, data_cols, drop = FALSE]),
+    subjects   = unique(input_df[, subject_cols, drop = FALSE]),
+    parameters = unique(input_df[, param_cols, drop = FALSE]),
+    untransformed = untransformed_df,
+    queries       = queries_df
+  )
+
+  score_cols <- intersect(
+    c("timeseries_id", "site", "country", "region", "feature",
+      "pvalue_kstest_logp", "kstest_statistic", "fdr_corrected_pvalue_logp",
+      "ref_group", "subject_count"),
+    names(results_df)
+  )
+
+  ctas_results <- list(
+    site_scores = results_df[, score_cols, drop = FALSE],
+    timeseries  = unique(results_df[, c("timeseries_id", "parameter_id"),
+                                     drop = FALSE])
+  )
+
+  list(ctas_data = ctas_data, ctas_results = ctas_results)
+}
+
+
 #' Prepare timeseries data for outlier sites
 #'
 #' Filters the measures data frame to a single parameter and sites whose
