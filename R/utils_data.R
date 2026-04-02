@@ -1,3 +1,49 @@
+#' Aggregate uploaded results by removing timeseries_id
+#'
+#' Drops the `timeseries_id` column and collapses rows by taking the
+#' maximum `fdr_corrected_pvalue_logp` per group of remaining columns.
+#' This dramatically reduces the size of the results data frame for large
+#' uploads where many timeseries map to the same parameter/site/feature.
+#'
+#' @param results_df Data frame read from the uploaded results file.
+#' @return A data frame without `timeseries_id`, with one row per unique
+#'   combination of the remaining columns.
+#' @export
+aggregate_results <- function(results_df) {
+  results_df[["timeseries_id"]] <- NULL
+  group_cols <- setdiff(names(results_df), "fdr_corrected_pvalue_logp")
+  results_df |>
+    dplyr::summarise(
+      fdr_corrected_pvalue_logp = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
+      .by = dplyr::all_of(group_cols)
+    )
+}
+
+
+#' Ensure parameter_id is present in site_scores
+#'
+#' For uploaded data, `site_scores` already contains `parameter_id`.
+#' For sample/ctas-package data, `parameter_id` lives in the separate
+#' `timeseries` table and must be joined in via `timeseries_id`.
+#'
+#' @param ctas_results List with `site_scores` and optionally `timeseries`.
+#' @return A data frame of site scores with a `parameter_id` column.
+#' @keywords internal
+scores_with_parameter_id <- function(ctas_results) {
+  ss <- ctas_results$site_scores
+  if ("parameter_id" %in% names(ss)) return(ss)
+  ss |>
+    dplyr::left_join(
+      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    )
+}
+
+
 #' Prepare measures table from ctas input and results
 #'
 #' Joins the raw timeseries data with subject metadata, parameter metadata,
@@ -16,13 +62,13 @@
 #' @export
 prepare_measures <- function(ctas_data, ctas_results) {
 
-  scores <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
+  scores <- scores_with_parameter_id(ctas_results) |>
     dplyr::summarise(
-      max_score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      max_score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "parameter_id")
     )
 
@@ -71,14 +117,14 @@ prepare_measures <- function(ctas_data, ctas_results) {
 #'   Sorted by descending max_score.
 #' @export
 prepare_score_table <- function(ctas_results, parameter_id) {
-  scores_long <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
+  scores_long <- scores_with_parameter_id(ctas_results) |>
     dplyr::filter(.data$parameter_id == .env$parameter_id) |>
     dplyr::summarise(
-      score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "feature")
     )
 
@@ -110,11 +156,7 @@ prepare_score_table <- function(ctas_results, parameter_id) {
 #' @return A data frame identical to `measures` but with recalculated `max_score`.
 #' @export
 recompute_max_score <- function(measures, ctas_results, features = NULL) {
-  scores <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    )
+  scores <- scores_with_parameter_id(ctas_results)
 
   if (!is.null(features)) {
     scores <- scores |>
@@ -123,7 +165,11 @@ recompute_max_score <- function(measures, ctas_results, features = NULL) {
 
   new_scores <- scores |>
     dplyr::summarise(
-      max_score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      max_score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "parameter_id")
     )
 
@@ -147,11 +193,7 @@ recompute_max_score <- function(measures, ctas_results, features = NULL) {
 #' @export
 prepare_score_table_multi <- function(ctas_results, parameter_ids,
                                       features = NULL) {
-  scores_long <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
+  scores_long <- scores_with_parameter_id(ctas_results) |>
     dplyr::filter(.data$parameter_id %in% .env$parameter_ids)
 
   if (!is.null(features)) {
@@ -161,7 +203,11 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 
   scores_long <- scores_long |>
     dplyr::summarise(
-      score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "feature")
     )
 
@@ -466,14 +512,16 @@ reconstruct_from_upload <- function(input_df, results_df,
   score_cols <- intersect(
     c("timeseries_id", "site", "country", "region", "feature",
       "pvalue_kstest_logp", "kstest_statistic", "fdr_corrected_pvalue_logp",
-      "ref_group", "subject_count"),
+      "ref_group", "subject_count", "parameter_id"),
     names(results_df)
   )
 
+  has_ts <- "timeseries_id" %in% names(results_df)
   ctas_results <- list(
     site_scores = results_df[, score_cols, drop = FALSE],
-    timeseries  = unique(results_df[, c("timeseries_id", "parameter_id"),
-                                     drop = FALSE])
+    timeseries  = if (has_ts) {
+      unique(results_df[, c("timeseries_id", "parameter_id"), drop = FALSE])
+    }
   )
 
   list(ctas_data = ctas_data, ctas_results = ctas_results)

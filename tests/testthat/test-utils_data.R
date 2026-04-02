@@ -465,8 +465,8 @@ test_that("reconstruct_from_upload builds valid ctas structures", {
   expect_null(cd$queries)
 
   cr <- out$ctas_results
-  expect_true(all(c("site_scores", "timeseries") %in% names(cr)))
-  expect_true("parameter_id" %in% names(cr$timeseries))
+  expect_true("site_scores" %in% names(cr))
+  expect_true("parameter_id" %in% names(cr$site_scores))
 })
 
 test_that("reconstruct_from_upload passes through optional files", {

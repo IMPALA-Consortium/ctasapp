@@ -8,3 +8,5 @@
 inst/doc
 .Renviron
 docs
+*.parquet
+TODO.md
