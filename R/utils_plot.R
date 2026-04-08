@@ -333,14 +333,22 @@ get_plot_visit_levels <- function(param_ids, df_measures, plot_type = "categoric
 plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
                              visit_order = NULL) {
 
+  # Compute max_score_site across ALL one-hot encodings before filtering to
+  # result == 1, so that encodings absent at a site still contribute their score.
+  site_max <- df_measures |>
+    dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
+    dplyr::summarise(
+      max_score_site = max(.data$max_score, na.rm = TRUE),
+      .by = "site"
+    )
+
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
     dplyr::filter(.data$result == 1) |>
+    dplyr::left_join(site_max, by = "site") |>
     dplyr::mutate(
       val_cat = sub(".*=", "", .data$parameter_id),
-      val_cat = stringr::str_trunc(.data$val_cat, 30),
-      max_score_site = max(.data$max_score, na.rm = TRUE),
-      .by = "site"
+      val_cat = stringr::str_trunc(.data$val_cat, 30)
     )
 
   if (nrow(df) == 0) {
@@ -352,14 +360,12 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
   }
 
   if (is.null(sites)) {
-    sites <- df |>
-      dplyr::distinct(.data$site, .data$max_score_site) |>
+    sites <- site_max |>
       dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
 
-  # Group sites: above threshold get asterisk, all others collapse to "unflagged"
   df_gr <- df |>
     dplyr::mutate(
       site_label = ifelse(
@@ -541,13 +547,19 @@ plot_cat_bar_ci <- function(df_plot) {
 plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
                      visit_order = NULL) {
 
+  site_max <- df_measures |>
+    dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
+    dplyr::summarise(
+      max_score_site = max(.data$max_score, na.rm = TRUE),
+      .by = "site"
+    )
+
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
     dplyr::filter(.data$result == 1) |>
+    dplyr::left_join(site_max, by = "site") |>
     dplyr::mutate(
-      val_cat = sub(".*=", "", .data$parameter_id),
-      max_score_site = max(.data$max_score, na.rm = TRUE),
-      .by = "site"
+      val_cat = sub(".*=", "", .data$parameter_id)
     )
 
   if (nrow(df) == 0) {
@@ -559,8 +571,7 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
   }
 
   if (is.null(sites)) {
-    sites <- df |>
-      dplyr::distinct(.data$site, .data$max_score_site) |>
+    sites <- site_max |>
       dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)

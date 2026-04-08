@@ -248,10 +248,23 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 #' @export
 prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
                                   untransformed = NULL) {
+  # Determine outlier sites from the max score across ALL parameter_ids in the
+
+  # group, so that categorical one-hot encodings with individually low scores
+  # are still included when a sibling encoding flags the site.
+  outlier_sites <- measures |>
+    dplyr::filter(.data$parameter_id %in% .env$parameter_ids) |>
+    dplyr::summarise(
+      group_max = max(.data$max_score, na.rm = TRUE),
+      .by = "site"
+    ) |>
+    dplyr::filter(.data$group_max > .env$thresh) |>
+    dplyr::pull(.data$site)
+
   filtered <- measures |>
     dplyr::filter(
       .data$parameter_id %in% .env$parameter_ids,
-      .data$max_score > .env$thresh
+      .data$site %in% .env$outlier_sites
     )
 
   if (!is.null(untransformed) && nrow(filtered) > 0) {
