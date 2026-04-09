@@ -32,7 +32,7 @@ mod_FieldDetail_ui <- function(id) {
       shiny::uiOutput(ns("param_list"))
     ),
     shiny::h4(shiny::textOutput(ns("plot_title"))),
-    shiny::h5("Site Scores by Feature"),
+    shiny::h5(shiny::textOutput(ns("plot_subtitle"))),
     bslib::navset_pill(
       bslib::nav_panel("Regular Scores", DT::dataTableOutput(ns("score_table_regular"))),
       bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
@@ -330,10 +330,10 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       qd[qd$subject_id %in% study_subj, ]
     })
 
-    rctv_study <- shiny::reactive({
+    rctv_study <- shiny::reactive({ # nocov start
       sel <- input$study_filter
       if (is.null(sel) || sel == "__all__") NULL else sel
-    })
+    }) # nocov end
 
     # -- Populate feature checkboxes from loaded data --------------------------
     shiny::observeEvent(flt_ctas_results(), {
@@ -466,14 +466,26 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     output$plot_title <- shiny::renderText({
       p <- input$selected_param
       if (is.null(p)) return("Select a parameter")
+      p
+    })
 
-      parts <- character()
-      dl <- rctv_dataset_label()
-      if (!is.null(dl) && nzchar(dl)) parts <- c(parts, dl)
-      st <- rctv_study()
-      if (!is.null(st) && nzchar(st)) parts <- c(parts, paste("Study:", st))
-      parts <- c(parts, p)
-      paste(parts, collapse = " | ")
+    output$plot_subtitle <- shiny::renderText({
+      p <- input$selected_param
+      if (is.null(p)) return("")
+
+      df <- rctv_measures_feat()
+      shiny::req(df)
+      pid <- get_param_ids()
+      pnames <- df$parameter_name[df$parameter_id %in% pid &
+                                   df$parameter_category_3 != "ratio_missing"]
+      pnames <- unique(pnames)
+
+      # Extract distinct parts before and after "="
+      before_eq <- unique(sub("=.*", "", pnames))
+      after_eq <- unique(sub("^[^=]*=", "", pnames))
+      after_eq <- setdiff(after_eq, before_eq)
+      parts <- if (length(after_eq) > 0) c(before_eq, sort(after_eq)) else before_eq
+      paste(parts, collapse = ", ")
     })
 
     # -- Helper: get selected features for score table -------------------------
@@ -487,26 +499,41 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       feats
     }
 
-    # -- Regular score table (pill tab 1) --------------------------------------
-    output$score_table_regular <- DT::renderDataTable({
+    # -- Scores data (shared between table & plot) -----------------------------
+    rctv_scores_regular <- shiny::reactive({
       res <- flt_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
       df <- rctv_measures_feat()
-      thresh <- input$thresh %||% 1.3
       feats <- get_selected_features()
-
       splits <- split_param_ids(param_ids, df)
+      # nocov start
+      if (length(splits$regular) == 0) return(NULL)
+      prepare_score_table_multi(res, splits$regular, features = feats)
+      # nocov end
+    })
+
+    # Helper: get sites from the current page of the regular score table,
+    # hard-capped at 24 sites.
+    get_plot_sites <- function() { # nocov start
+      row_idx <- input$score_table_regular_rows_current
+      scores <- rctv_scores_regular()
+      if (is.null(row_idx) || length(row_idx) == 0 || is.null(scores)) {
+        return(NULL)
+      }
+      sites <- scores$site[row_idx]
+      if (length(sites) > 24) sites <- sites[seq_len(24)]
+      sites
+    } # nocov end
+
+    # -- Regular score table (pill tab 1) --------------------------------------
+    output$score_table_regular <- DT::renderDataTable({
+      scores_display <- rctv_scores_regular()
       shiny::validate(shiny::need(
-        length(splits$regular) > 0,
-        "No regular (non-missingness) parameters for this field."
-      ))
-      scores_display <- prepare_score_table_multi(res, splits$regular,
-                                                  features = feats)
-      shiny::validate(shiny::need(
-        nrow(scores_display) > 0,
+        !is.null(scores_display) && nrow(scores_display) > 0,
         "No outlier scores available (too few timepoints for ctas to compute features)."
       ))
+      thresh <- input$thresh %||% 1.3
       render_score_dt(scores_display, thresh)
     })
 
@@ -639,14 +666,19 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
       qd <- flt_queries()
 
+      plot_sites <- get_plot_sites()
+
       if (plot_type == "categorical") {
         plot_categorical(param_ids, df, thresh = thresh,
+                         sites = plot_sites,
                          visit_order = visit_order)
       } else if (plot_type == "bar") {
         plot_bar(param_ids, df, thresh = thresh,
+                 sites = plot_sites,
                  visit_order = visit_order)
       } else {
-        plot_timeseries(param_ids, df, thresh = thresh, query_data = qd)
+        plot_timeseries(param_ids, df, thresh = thresh,
+                        sites = plot_sites, query_data = qd)
       }
     }, res = 96)
 
@@ -660,6 +692,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       sel <- input$selected_param
       match_row <- lookup$display_id == sel
       shiny::req(any(match_row))
+      plot_type <- lookup$plot_type[match_row]
       param_ids <- lookup$parameter_ids[match_row][[1]]
       param_ids <- filter_param_ids(param_ids)
       shiny::req(length(param_ids) > 0)
@@ -667,23 +700,33 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       thresh <- input$thresh %||% 1.3
       untransformed <- flt_untransformed()
       ts_data <- prepare_ts_data_multi(df, param_ids, thresh,
-                                       untransformed = untransformed)
+                                       untransformed = untransformed,
+                                       plot_type = plot_type)
       shiny::validate(shiny::need(
         nrow(ts_data) > 0,
         "No outlier site data to display (no sites exceed the threshold for this parameter)."
       ))
 
+      # Hide parameter_id and parameter_name by default for numeric
+      hide_cols <- which(names(ts_data) %in% c("parameter_id", "parameter_name")) - 1L
+
       DT::datatable(
         ts_data,
         filter = "top",
         rownames = FALSE,
-        extensions = "Buttons",
+        extensions = c("Buttons", "ColReorder"),
         options = list(
           pageLength = 25,
           lengthMenu = c(5, 10, 25, 50, 100),
           dom = "Blfrtip",
-          buttons = c("copy", "csv", "excel"),
-          scrollX = TRUE
+          buttons = list("copy", "csv", "excel", "colvis"),
+          colReorder = TRUE,
+          scrollX = TRUE,
+          columnDefs = if (length(hide_cols) > 0) {
+            list(list(visible = FALSE, targets = as.list(hide_cols)))
+          } else {
+            list()
+          }
         )
       )
     })
@@ -717,10 +760,12 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         dplyr::left_join(subj_site, by = "subject_id") |>
         dplyr::filter(.data$site %in% outlier_sites) |>
         dplyr::select(
-          "site", "subject_id", "visit", "domain", "field",
-          "query_status", "query_type", "data_change",
-          "query_text", "query_answer",
-          "value_first_entry", "value_now"
+          "site", "subject_id", "visit",
+          dplyr::any_of(c("domain", "field",
+                          "query_status", "query_type")),
+          "data_change",
+          dplyr::any_of(c("query_text", "query_answer",
+                          "value_first_entry", "value_now"))
         )
 
       shiny::validate(shiny::need(
@@ -732,12 +777,13 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         q_filtered,
         filter = "top",
         rownames = FALSE,
-        extensions = "Buttons",
+        extensions = c("Buttons", "ColReorder"),
         options = list(
           pageLength = 25,
           lengthMenu = c(5, 10, 25, 50, 100),
           dom = "Blfrtip",
-          buttons = c("copy", "csv", "excel"),
+          buttons = list("copy", "csv", "excel", "colvis"),
+          colReorder = TRUE,
           scrollX = TRUE
         )
       )

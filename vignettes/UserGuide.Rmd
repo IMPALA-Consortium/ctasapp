@@ -296,3 +296,17 @@ files (CSV, Parquet, or RDA):
 See the collapsible "File format documentation" panel in the app's Data tab
 for full column specifications. An optional `study` column in the Input file
 enables multi-study filtering in the Fields panel.
+
+### Generating example upload files
+
+Use `generate_sample_csv()` to create a set of example CSV files from the
+bundled sample data. This is useful for trying the upload feature or as a
+template for your own data:
+```{r generate-csv, eval = FALSE}
+generate_sample_csv("~/my_upload_files")
+```
+
+This writes `results.csv`, `input.csv`, `untransformed.csv`, and
+`queries.csv` into the specified directory. The files combine both sample
+datasets (`sample_ctas_data` as STUDY-001 and `sample_sdtm_data` as
+STUDY-002) into a multi-study upload example.

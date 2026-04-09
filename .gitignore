@@ -8,3 +8,6 @@
 inst/doc
 .Renviron
 docs
+*.parquet
+TODO.md
+debug.R

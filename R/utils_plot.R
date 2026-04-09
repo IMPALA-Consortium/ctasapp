@@ -333,14 +333,22 @@ get_plot_visit_levels <- function(param_ids, df_measures, plot_type = "categoric
 plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
                              visit_order = NULL) {
 
+  # Compute max_score_site across ALL one-hot encodings before filtering to
+  # result == 1, so that encodings absent at a site still contribute their score.
+  site_max <- df_measures |>
+    dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
+    dplyr::summarise(
+      max_score_site = max(.data$max_score, na.rm = TRUE),
+      .by = "site"
+    )
+
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
     dplyr::filter(.data$result == 1) |>
+    dplyr::left_join(site_max, by = "site") |>
     dplyr::mutate(
-      val_cat = sub(".*=", "", .data$parameter_id),
-      val_cat = stringr::str_trunc(.data$val_cat, 30),
-      max_score_site = max(.data$max_score, na.rm = TRUE),
-      .by = "site"
+      val_cat = sub(".*=", "", .data$parameter_name),
+      val_cat = stringr::str_trunc(.data$val_cat, 30)
     )
 
   if (nrow(df) == 0) {
@@ -352,22 +360,34 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
   }
 
   if (is.null(sites)) {
-    sites <- df |>
-      dplyr::distinct(.data$site, .data$max_score_site) |>
+    sites <- site_max |>
       dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
+  if (length(sites) > 24) sites <- sites[seq_len(24)] # nocov
 
-  # Group sites: above threshold get asterisk, all others collapse to "unflagged"
   df_gr <- df |>
+    dplyr::filter(
+      .data$site %in% .env$sites |
+      .data$max_score_site <= .env$thresh
+    ) |>
     dplyr::mutate(
       site_label = ifelse(
-        .data$max_score_site > .env$thresh,
-        paste(.data$site, "*"),
+        .data$site %in% .env$sites,
+        paste0(.data$site, " - score: ", round(.data$max_score_site, 1)),
         "unflagged"
       )
     )
+
+  # Order facets by max_score descending, unflagged last
+  site_order <- df_gr |>
+    dplyr::distinct(.data$site_label, .data$max_score_site) |>
+    dplyr::filter(.data$site_label != "unflagged") |>
+    dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
+    dplyr::pull(.data$site_label)
+  if ("unflagged" %in% df_gr$site_label) site_order <- c(site_order, "unflagged")
+  df_gr$site_label <- factor(df_gr$site_label, levels = site_order)
 
   # Handle duplicate timepoints per patient by appending padded rank
   df_plot <- df_gr |>
@@ -541,13 +561,20 @@ plot_cat_bar_ci <- function(df_plot) {
 plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
                      visit_order = NULL) {
 
+  site_max <- df_measures |>
+    dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
+    dplyr::summarise(
+      max_score_site = max(.data$max_score, na.rm = TRUE),
+      .by = "site"
+    )
+
   df <- df_measures |>
     dplyr::filter(.data$parameter_id %in% .env$param_ids) |>
     dplyr::filter(.data$result == 1) |>
+    dplyr::left_join(site_max, by = "site") |>
     dplyr::mutate(
-      val_cat = sub(".*=", "", .data$parameter_id),
-      max_score_site = max(.data$max_score, na.rm = TRUE),
-      .by = "site"
+      val_cat = sub(".*=", "", .data$parameter_name),
+      val_cat = stringr::str_trunc(.data$val_cat, 30)
     )
 
   if (nrow(df) == 0) {
@@ -559,21 +586,36 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
   }
 
   if (is.null(sites)) {
-    sites <- df |>
-      dplyr::distinct(.data$site, .data$max_score_site) |>
+    sites <- site_max |>
       dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
+  if (length(sites) > 24) sites <- sites[seq_len(24)] # nocov
 
   df_gr <- df |>
+    dplyr::filter(
+      .data$site %in% .env$sites |
+      .data$max_score_site <= .env$thresh
+    ) |>
     dplyr::mutate(
       site_label = ifelse(
-        .data$max_score_site > .env$thresh,
-        paste(.data$site, "*"),
+        .data$site %in% .env$sites,
+        .data$site,
         "unflagged"
       )
-    ) |>
+    )
+
+  # Order bars by max_score descending, unflagged last
+  site_order <- df_gr |>
+    dplyr::distinct(.data$site_label, .data$max_score_site) |>
+    dplyr::filter(.data$site_label != "unflagged") |>
+    dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
+    dplyr::pull(.data$site_label)
+  if ("unflagged" %in% df_gr$site_label) site_order <- c(site_order, "unflagged")
+  df_gr$site_label <- factor(df_gr$site_label, levels = site_order)
+
+  df_gr <- df_gr |>
     dplyr::distinct(.data$subject_id, .data$site_label, .data$timepoint_1_name,
                     .data$timepoint_rank, .data$val_cat)
 

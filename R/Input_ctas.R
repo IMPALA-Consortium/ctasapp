@@ -334,7 +334,7 @@ Input_RS <- function(dfDM, dfRS, strTestCD = "OVRLRESP") {
   levels <- sort(unique(encoded$level))
   params <- data.frame(
     parameter_id = levels,
-    parameter_name = paste("Response:", levels),
+    parameter_name = paste0("Response=", sub(paste0(prefix, "="), "", levels)),
     parameter_category_1 = "Response",
     parameter_category_2 = prefix,
     parameter_category_3 = "categorical",
@@ -435,7 +435,7 @@ Input_BMI <- function(dfDM, dfVS) {
   levels <- sort(unique(encoded$level))
   params <- data.frame(
     parameter_id = levels,
-    parameter_name = paste("Weight Category:", sub(".*=", "", levels)),
+    parameter_name = paste0("Weight Category=", sub(paste0(prefix, "="), "", levels)),
     parameter_category_1 = "Vital Signs",
     parameter_category_2 = prefix,
     parameter_category_3 = "bar",

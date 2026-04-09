@@ -1,3 +1,49 @@
+#' Aggregate uploaded results by removing timeseries_id
+#'
+#' Drops the `timeseries_id` column and collapses rows by taking the
+#' maximum `fdr_corrected_pvalue_logp` per group of remaining columns.
+#' This dramatically reduces the size of the results data frame for large
+#' uploads where many timeseries map to the same parameter/site/feature.
+#'
+#' @param results_df Data frame read from the uploaded results file.
+#' @return A data frame without `timeseries_id`, with one row per unique
+#'   combination of the remaining columns.
+#' @export
+aggregate_results <- function(results_df) {
+  results_df[["timeseries_id"]] <- NULL
+  group_cols <- setdiff(names(results_df), "fdr_corrected_pvalue_logp")
+  results_df |>
+    dplyr::summarise(
+      fdr_corrected_pvalue_logp = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
+      .by = dplyr::all_of(group_cols)
+    )
+}
+
+
+#' Ensure parameter_id is present in site_scores
+#'
+#' For uploaded data, `site_scores` already contains `parameter_id`.
+#' For sample/ctas-package data, `parameter_id` lives in the separate
+#' `timeseries` table and must be joined in via `timeseries_id`.
+#'
+#' @param ctas_results List with `site_scores` and optionally `timeseries`.
+#' @return A data frame of site scores with a `parameter_id` column.
+#' @keywords internal
+scores_with_parameter_id <- function(ctas_results) {
+  ss <- ctas_results$site_scores
+  if ("parameter_id" %in% names(ss)) return(ss)
+  ss |>
+    dplyr::left_join(
+      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    )
+}
+
+
 #' Prepare measures table from ctas input and results
 #'
 #' Joins the raw timeseries data with subject metadata, parameter metadata,
@@ -16,13 +62,13 @@
 #' @export
 prepare_measures <- function(ctas_data, ctas_results) {
 
-  scores <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
+  scores <- scores_with_parameter_id(ctas_results) |>
     dplyr::summarise(
-      max_score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      max_score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "parameter_id")
     )
 
@@ -71,14 +117,14 @@ prepare_measures <- function(ctas_data, ctas_results) {
 #'   Sorted by descending max_score.
 #' @export
 prepare_score_table <- function(ctas_results, parameter_id) {
-  scores_long <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
+  scores_long <- scores_with_parameter_id(ctas_results) |>
     dplyr::filter(.data$parameter_id == .env$parameter_id) |>
     dplyr::summarise(
-      score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "feature")
     )
 
@@ -110,11 +156,7 @@ prepare_score_table <- function(ctas_results, parameter_id) {
 #' @return A data frame identical to `measures` but with recalculated `max_score`.
 #' @export
 recompute_max_score <- function(measures, ctas_results, features = NULL) {
-  scores <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    )
+  scores <- scores_with_parameter_id(ctas_results)
 
   if (!is.null(features)) {
     scores <- scores |>
@@ -123,7 +165,11 @@ recompute_max_score <- function(measures, ctas_results, features = NULL) {
 
   new_scores <- scores |>
     dplyr::summarise(
-      max_score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      max_score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "parameter_id")
     )
 
@@ -147,11 +193,7 @@ recompute_max_score <- function(measures, ctas_results, features = NULL) {
 #' @export
 prepare_score_table_multi <- function(ctas_results, parameter_ids,
                                       features = NULL) {
-  scores_long <- ctas_results$site_scores |>
-    dplyr::left_join(
-      ctas_results$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
+  scores_long <- scores_with_parameter_id(ctas_results) |>
     dplyr::filter(.data$parameter_id %in% .env$parameter_ids)
 
   if (!is.null(features)) {
@@ -161,7 +203,11 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 
   scores_long <- scores_long |>
     dplyr::summarise(
-      score = max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE),
+      score = if (all(is.na(.data$fdr_corrected_pvalue_logp))) {
+        NA_real_
+      } else {
+        max(.data$fdr_corrected_pvalue_logp, na.rm = TRUE)
+      },
       .by = c("site", "feature")
     )
 
@@ -197,16 +243,35 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 #' @param untransformed Optional data frame with columns subject_id,
 #'   parameter_category_2, timepoint_1_name, original_value, lower, upper,
 #'   original_category. Pass NULL (default) to show transformed result only.
+#' @param plot_type Character scalar: "numeric", "categorical", or "bar".
+#'   Controls column selection and deduplication.
 #'
 #' @return A data frame sorted by site, subject_id, timepoint_rank.
 #' @export
 prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
-                                  untransformed = NULL) {
+                                  untransformed = NULL,
+                                  plot_type = "numeric") {
+  # Determine outlier sites from the max score across ALL parameter_ids in the
+
+  # group, so that categorical one-hot encodings with individually low scores
+  # are still included when a sibling encoding flags the site.
+  outlier_sites <- measures |>
+    dplyr::filter(.data$parameter_id %in% .env$parameter_ids) |>
+    dplyr::summarise(
+      group_max = max(.data$max_score, na.rm = TRUE),
+      .by = "site"
+    ) |>
+    dplyr::filter(.data$group_max > .env$thresh) |>
+    dplyr::pull(.data$site)
+
   filtered <- measures |>
     dplyr::filter(
       .data$parameter_id %in% .env$parameter_ids,
-      .data$max_score > .env$thresh
+      .data$site %in% .env$outlier_sites,
+      .data$parameter_category_3 != "ratio_missing"
     )
+
+  is_cat <- plot_type %in% c("categorical", "bar")
 
   if (!is.null(untransformed) && nrow(filtered) > 0) {
     display_cats <- unique(filtered$parameter_category_2)
@@ -224,32 +289,61 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
       )
 
     ut_cols <- c("original_value", "lower", "upper", "original_category")
-    result <- filtered |>
-      dplyr::select(
-        "site", "subject_id", "parameter_id", "timepoint_rank",
-        "timepoint_1_name", dplyr::all_of(ut_cols),
-        "result", "parameter_name", "max_score"
-      ) |>
-      dplyr::mutate(
-        original_value = round(.data$original_value, 3),
-        lower = round(.data$lower, 3),
-        upper = round(.data$upper, 3),
-        result = round(.data$result, 3),
-        max_score = round(.data$max_score, 2)
-      )
+    ut_cols <- intersect(ut_cols, names(filtered))
 
-    all_na <- vapply(result[ut_cols], function(x) all(is.na(x)), logical(1))
-    result <- result[, !names(result) %in% names(all_na[all_na]), drop = FALSE]
+    if (is_cat) {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name",
+          dplyr::any_of("original_category")
+        ) |>
+        dplyr::distinct()
+    } else {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name",
+          dplyr::any_of(ut_cols),
+          "result", "parameter_id", "parameter_name", "max_score"
+        ) |>
+        dplyr::mutate(
+          dplyr::across(
+            dplyr::any_of(c("original_value", "lower", "upper")),
+            \(x) round(x, 3)
+          ),
+          result = round(.data$result, 3),
+          max_score = round(.data$max_score, 2)
+        )
+    }
+
+    if (!is_cat) {
+      all_na <- vapply(ut_cols, function(col) {
+        if (col %in% names(result)) all(is.na(result[[col]])) else TRUE # nocov
+      }, logical(1))
+      drop_cols <- names(all_na[all_na])
+      result <- result[, !names(result) %in% drop_cols, drop = FALSE]
+    }
   } else {
-    result <- filtered |>
-      dplyr::select(
-        "site", "subject_id", "parameter_id", "timepoint_rank",
-        "timepoint_1_name", "result", "parameter_name", "max_score"
-      ) |>
-      dplyr::mutate(
-        result = round(.data$result, 3),
-        max_score = round(.data$max_score, 2)
-      )
+    if (is_cat) {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name"
+        ) |>
+        dplyr::distinct()
+    } else {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name",
+          "result", "parameter_id", "parameter_name", "max_score"
+        ) |>
+        dplyr::mutate(
+          result = round(.data$result, 3),
+          max_score = round(.data$max_score, 2)
+        )
+    }
   }
 
   result |>
@@ -380,6 +474,124 @@ validate_upload_queries <- function(df) {
 }
 
 
+#' Generate sample upload CSV files
+#'
+#' Creates the 4 flat CSV files (results, input, untransformed, queries)
+#' that can be uploaded to the ctasapp Shiny dashboard. The files are
+#' generated from the bundled [sample_ctas_data], [sample_ctas_results],
+#' [sample_sdtm_data], and [sample_sdtm_results] datasets, combining
+#' them into a multi-study example.
+#'
+#' @param path Directory where CSVs will be written. Created if it does
+#'   not exist.
+#' @param sdtm_categories Character vector of `parameter_category_2` values
+#'   to include from the SDTM sample. Pass `NULL` to include all.
+#' @return A character vector of the file paths written (invisibly).
+#' @export
+#' @examples
+#' \dontrun{
+#' generate_sample_csv(tempdir())
+#' }
+generate_sample_csv <- function(path,
+                                sdtm_categories = c(
+                                  "ALT", "AST", "CREAT",
+                                  "VS_DIABP", "VS_HEIGHT", "VS_PULSE",
+                                  "VS_SYSBP", "VS_TEMP", "VS_WEIGHT",
+                                  "RS_OVRLRESP", "VS_WEIGHT_CAT"
+                                )) {
+  dir.create(path, recursive = TRUE, showWarnings = FALSE)
+
+  ctas_d <- ctasapp::sample_ctas_data
+  ctas_r <- ctasapp::sample_ctas_results
+  sdtm_d <- ctasapp::sample_sdtm_data
+  sdtm_r <- ctasapp::sample_sdtm_results
+
+  ctas_input_df <- ctas_d$data |>
+    dplyr::left_join(ctas_d$subjects, by = "subject_id") |>
+    dplyr::left_join(
+      ctas_d$parameters[, c("parameter_id", "parameter_name",
+                             "parameter_category_1", "parameter_category_2",
+                             "parameter_category_3")],
+      by = "parameter_id"
+    ) |>
+    dplyr::mutate(study = "STUDY-001")
+
+  ctas_results_df <- ctas_r$site_scores |>
+    dplyr::left_join(
+      ctas_r$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    )
+
+  if (!is.null(sdtm_categories)) {
+    keep_param_ids <- sdtm_d$parameters$parameter_id[
+      sdtm_d$parameters$parameter_category_2 %in% sdtm_categories
+    ]
+  } else {
+    keep_param_ids <- sdtm_d$parameters$parameter_id
+  }
+
+  sdtm_input_df <- sdtm_d$data |>
+    dplyr::filter(.data$parameter_id %in% .env$keep_param_ids) |>
+    dplyr::left_join(sdtm_d$subjects, by = "subject_id") |>
+    dplyr::left_join(
+      sdtm_d$parameters[, c("parameter_id", "parameter_name",
+                             "parameter_category_1", "parameter_category_2",
+                             "parameter_category_3")],
+      by = "parameter_id"
+    ) |>
+    dplyr::mutate(study = "STUDY-002")
+
+  sdtm_results_df <- sdtm_r$site_scores |>
+    dplyr::left_join(
+      sdtm_r$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    ) |>
+    dplyr::filter(.data$parameter_id %in% .env$keep_param_ids)
+
+  input_csv <- dplyr::bind_rows(ctas_input_df, sdtm_input_df)
+  results_csv <- dplyr::bind_rows(ctas_results_df, sdtm_results_df)
+
+  untransformed_csv <- if (!is.null(sdtm_d$untransformed)) {
+    if (!is.null(sdtm_categories)) {
+      sdtm_d$untransformed |>
+        dplyr::filter(.data$parameter_category_2 %in% .env$sdtm_categories)
+    } else {
+      sdtm_d$untransformed
+    }
+  }
+
+  sdtm_queries <- if (!is.null(sdtm_d$queries)) {
+    sdtm_d$queries |>
+      dplyr::filter(.data$parameter_id %in% .env$keep_param_ids)
+  }
+  queries_csv <- dplyr::bind_rows(ctas_d$queries, sdtm_queries)
+
+  files <- character()
+
+  f <- file.path(path, "results.csv")
+  utils::write.csv(results_csv, f, row.names = FALSE)
+  files <- c(files, f)
+
+  f <- file.path(path, "input.csv")
+  utils::write.csv(input_csv, f, row.names = FALSE)
+  files <- c(files, f)
+
+  if (!is.null(untransformed_csv) && nrow(untransformed_csv) > 0) {
+    f <- file.path(path, "untransformed.csv")
+    utils::write.csv(untransformed_csv, f, row.names = FALSE)
+    files <- c(files, f)
+  }
+
+  if (!is.null(queries_csv) && nrow(queries_csv) > 0) {
+    f <- file.path(path, "queries.csv")
+    utils::write.csv(queries_csv, f, row.names = FALSE)
+    files <- c(files, f)
+  }
+
+  invisible(files)
+}
+
+
 #' Cross-validate uploaded files
 #'
 #' Checks referential integrity between the results and input files:
@@ -466,14 +678,16 @@ reconstruct_from_upload <- function(input_df, results_df,
   score_cols <- intersect(
     c("timeseries_id", "site", "country", "region", "feature",
       "pvalue_kstest_logp", "kstest_statistic", "fdr_corrected_pvalue_logp",
-      "ref_group", "subject_count"),
+      "ref_group", "subject_count", "parameter_id"),
     names(results_df)
   )
 
+  has_ts <- "timeseries_id" %in% names(results_df)
   ctas_results <- list(
     site_scores = results_df[, score_cols, drop = FALSE],
-    timeseries  = unique(results_df[, c("timeseries_id", "parameter_id"),
-                                     drop = FALSE])
+    timeseries  = if (has_ts) {
+      unique(results_df[, c("timeseries_id", "parameter_id"), drop = FALSE])
+    }
   )
 
   list(ctas_data = ctas_data, ctas_results = ctas_results)

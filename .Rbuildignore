@@ -2,6 +2,7 @@
 ^data-raw$
 ^\.cursor$
 ^ctas\.app\.Rproj$
+^ctas_app\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^\.github$
@@ -9,3 +10,6 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^TODO\.md$
+^debug\.R$
+.*\.parquet$
