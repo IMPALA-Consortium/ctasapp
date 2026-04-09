@@ -247,7 +247,8 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 #' @return A data frame sorted by site, subject_id, timepoint_rank.
 #' @export
 prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
-                                  untransformed = NULL) {
+                                  untransformed = NULL,
+                                  plot_type = "numeric") {
   # Determine outlier sites from the max score across ALL parameter_ids in the
 
   # group, so that categorical one-hot encodings with individually low scores
@@ -264,8 +265,11 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
   filtered <- measures |>
     dplyr::filter(
       .data$parameter_id %in% .env$parameter_ids,
-      .data$site %in% .env$outlier_sites
+      .data$site %in% .env$outlier_sites,
+      .data$parameter_category_3 != "ratio_missing"
     )
+
+  is_cat <- plot_type %in% c("categorical", "bar")
 
   if (!is.null(untransformed) && nrow(filtered) > 0) {
     display_cats <- unique(filtered$parameter_category_2)
@@ -283,32 +287,61 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
       )
 
     ut_cols <- c("original_value", "lower", "upper", "original_category")
-    result <- filtered |>
-      dplyr::select(
-        "site", "subject_id", "parameter_id", "timepoint_rank",
-        "timepoint_1_name", dplyr::all_of(ut_cols),
-        "result", "parameter_name", "max_score"
-      ) |>
-      dplyr::mutate(
-        original_value = round(.data$original_value, 3),
-        lower = round(.data$lower, 3),
-        upper = round(.data$upper, 3),
-        result = round(.data$result, 3),
-        max_score = round(.data$max_score, 2)
-      )
+    ut_cols <- intersect(ut_cols, names(filtered))
 
-    all_na <- vapply(result[ut_cols], function(x) all(is.na(x)), logical(1))
-    result <- result[, !names(result) %in% names(all_na[all_na]), drop = FALSE]
+    if (is_cat) {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name",
+          dplyr::any_of("original_category")
+        ) |>
+        dplyr::distinct()
+    } else {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name",
+          dplyr::any_of(ut_cols),
+          "result", "parameter_id", "parameter_name", "max_score"
+        ) |>
+        dplyr::mutate(
+          dplyr::across(
+            dplyr::any_of(c("original_value", "lower", "upper")),
+            \(x) round(x, 3)
+          ),
+          result = round(.data$result, 3),
+          max_score = round(.data$max_score, 2)
+        )
+    }
+
+    if (!is_cat) {
+      all_na <- vapply(ut_cols, function(col) {
+        if (col %in% names(result)) all(is.na(result[[col]])) else TRUE
+      }, logical(1))
+      drop_cols <- names(all_na[all_na])
+      result <- result[, !names(result) %in% drop_cols, drop = FALSE]
+    }
   } else {
-    result <- filtered |>
-      dplyr::select(
-        "site", "subject_id", "parameter_id", "timepoint_rank",
-        "timepoint_1_name", "result", "parameter_name", "max_score"
-      ) |>
-      dplyr::mutate(
-        result = round(.data$result, 3),
-        max_score = round(.data$max_score, 2)
-      )
+    if (is_cat) {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name"
+        ) |>
+        dplyr::distinct()
+    } else {
+      result <- filtered |>
+        dplyr::select(
+          "site", "subject_id", "parameter_category_2",
+          "timepoint_rank", "timepoint_1_name",
+          "result", "parameter_id", "parameter_name", "max_score"
+        ) |>
+        dplyr::mutate(
+          result = round(.data$result, 3),
+          max_score = round(.data$max_score, 2)
+        )
+    }
   }
 
   result |>

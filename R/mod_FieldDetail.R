@@ -690,6 +690,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       sel <- input$selected_param
       match_row <- lookup$display_id == sel
       shiny::req(any(match_row))
+      plot_type <- lookup$plot_type[match_row]
       param_ids <- lookup$parameter_ids[match_row][[1]]
       param_ids <- filter_param_ids(param_ids)
       shiny::req(length(param_ids) > 0)
@@ -697,23 +698,33 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       thresh <- input$thresh %||% 1.3
       untransformed <- flt_untransformed()
       ts_data <- prepare_ts_data_multi(df, param_ids, thresh,
-                                       untransformed = untransformed)
+                                       untransformed = untransformed,
+                                       plot_type = plot_type)
       shiny::validate(shiny::need(
         nrow(ts_data) > 0,
         "No outlier site data to display (no sites exceed the threshold for this parameter)."
       ))
 
+      # Hide parameter_id and parameter_name by default for numeric
+      hide_cols <- which(names(ts_data) %in% c("parameter_id", "parameter_name")) - 1L
+
       DT::datatable(
         ts_data,
         filter = "top",
         rownames = FALSE,
-        extensions = "Buttons",
+        extensions = c("Buttons", "ColReorder"),
         options = list(
           pageLength = 25,
           lengthMenu = c(5, 10, 25, 50, 100),
           dom = "Blfrtip",
-          buttons = c("copy", "csv", "excel"),
-          scrollX = TRUE
+          buttons = list("copy", "csv", "excel", "colvis"),
+          colReorder = TRUE,
+          scrollX = TRUE,
+          columnDefs = if (length(hide_cols) > 0) {
+            list(list(visible = FALSE, targets = as.list(hide_cols)))
+          } else {
+            list()
+          }
         )
       )
     })
@@ -747,10 +758,12 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         dplyr::left_join(subj_site, by = "subject_id") |>
         dplyr::filter(.data$site %in% outlier_sites) |>
         dplyr::select(
-          "site", "subject_id", "visit", "domain", "field",
-          "query_status", "query_type", "data_change",
-          "query_text", "query_answer",
-          "value_first_entry", "value_now"
+          "site", "subject_id", "visit",
+          dplyr::any_of(c("domain", "field",
+                          "query_status", "query_type")),
+          "data_change",
+          dplyr::any_of(c("query_text", "query_answer",
+                          "value_first_entry", "value_now"))
         )
 
       shiny::validate(shiny::need(
@@ -762,12 +775,13 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         q_filtered,
         filter = "top",
         rownames = FALSE,
-        extensions = "Buttons",
+        extensions = c("Buttons", "ColReorder"),
         options = list(
           pageLength = 25,
           lengthMenu = c(5, 10, 25, 50, 100),
           dom = "Blfrtip",
-          buttons = c("copy", "csv", "excel"),
+          buttons = list("copy", "csv", "excel", "colvis"),
+          colReorder = TRUE,
           scrollX = TRUE
         )
       )
