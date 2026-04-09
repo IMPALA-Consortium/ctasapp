@@ -495,3 +495,77 @@ test_that("reconstruct_from_upload passes through optional files", {
   expect_s3_class(out$ctas_data$untransformed, "data.frame")
   expect_s3_class(out$ctas_data$queries, "data.frame")
 })
+
+# -- aggregate_results ---------------------------------------------------------
+
+test_that("aggregate_results collapses rows by max logp", {
+  df <- data.frame(
+    timeseries_id = c("ts1", "ts2", "ts3"),
+    site = c("A", "A", "B"),
+    feature = c("sd", "sd", "sd"),
+    fdr_corrected_pvalue_logp = c(3.0, 5.0, 2.0),
+    stringsAsFactors = FALSE
+  )
+  out <- aggregate_results(df)
+  expect_false("timeseries_id" %in% names(out))
+  expect_equal(nrow(out), 2)
+  expect_equal(out$fdr_corrected_pvalue_logp[out$site == "A"], 5.0)
+})
+
+test_that("aggregate_results returns NA for all-NA groups", {
+  df <- data.frame(
+    timeseries_id = c("ts1", "ts2"),
+    site = c("A", "A"),
+    feature = c("sd", "sd"),
+    fdr_corrected_pvalue_logp = c(NA_real_, NA_real_),
+    stringsAsFactors = FALSE
+  )
+  out <- aggregate_results(df)
+  expect_equal(nrow(out), 1)
+  expect_true(is.na(out$fdr_corrected_pvalue_logp))
+})
+
+# -- prepare_ts_data_multi categorical branches --------------------------------
+
+test_that("prepare_ts_data_multi categorical with untransformed selects original_category", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+
+  td <- prepare_ts_data_multi(m, cat_params, thresh = 0,
+                              untransformed = ut, plot_type = "categorical")
+  expect_s3_class(td, "data.frame")
+  expect_true(nrow(td) > 0)
+  # Categorical branch selects distinct rows without numeric columns
+  expect_false("result" %in% names(td))
+  expect_false("parameter_id" %in% names(td))
+})
+
+test_that("prepare_ts_data_multi categorical without untransformed returns minimal cols", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+
+  td <- prepare_ts_data_multi(m, cat_params, thresh = 0,
+                              untransformed = NULL, plot_type = "categorical")
+  expect_s3_class(td, "data.frame")
+  expect_true(nrow(td) > 0)
+  expect_true("site" %in% names(td))
+  expect_false("result" %in% names(td))
+})
+
+# -- generate_sample_csv with NULL sdtm_categories ----------------------------
+
+test_that("generate_sample_csv with NULL sdtm_categories exports all params", {
+  tmp_dir <- file.path(tempdir(), "csv_all")
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  files <- generate_sample_csv(tmp_dir, sdtm_categories = NULL)
+  expect_true(file.exists(file.path(tmp_dir, "input.csv")))
+  expect_true(file.exists(file.path(tmp_dir, "results.csv")))
+
+  input <- utils::read.csv(file.path(tmp_dir, "input.csv"))
+  # With NULL categories, all SDTM parameters should be included
+  sdtm_params <- unique(sample_sdtm_data$parameters$parameter_id)
+  input_params <- unique(input$parameter_id[input$study == "STUDY-002"])
+  expect_true(all(sdtm_params %in% input_params))
+})

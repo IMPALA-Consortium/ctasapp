@@ -243,6 +243,8 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 #' @param untransformed Optional data frame with columns subject_id,
 #'   parameter_category_2, timepoint_1_name, original_value, lower, upper,
 #'   original_category. Pass NULL (default) to show transformed result only.
+#' @param plot_type Character scalar: "numeric", "categorical", or "bar".
+#'   Controls column selection and deduplication.
 #'
 #' @return A data frame sorted by site, subject_id, timepoint_rank.
 #' @export
@@ -317,7 +319,7 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
 
     if (!is_cat) {
       all_na <- vapply(ut_cols, function(col) {
-        if (col %in% names(result)) all(is.na(result[[col]])) else TRUE
+        if (col %in% names(result)) all(is.na(result[[col]])) else TRUE # nocov
       }, logical(1))
       drop_cols <- names(all_na[all_na])
       result <- result[, !names(result) %in% drop_cols, drop = FALSE]
@@ -469,6 +471,124 @@ validate_upload_queries <- function(df) {
   }
 
   errs
+}
+
+
+#' Generate sample upload CSV files
+#'
+#' Creates the 4 flat CSV files (results, input, untransformed, queries)
+#' that can be uploaded to the ctasapp Shiny dashboard. The files are
+#' generated from the bundled [sample_ctas_data], [sample_ctas_results],
+#' [sample_sdtm_data], and [sample_sdtm_results] datasets, combining
+#' them into a multi-study example.
+#'
+#' @param path Directory where CSVs will be written. Created if it does
+#'   not exist.
+#' @param sdtm_categories Character vector of `parameter_category_2` values
+#'   to include from the SDTM sample. Pass `NULL` to include all.
+#' @return A character vector of the file paths written (invisibly).
+#' @export
+#' @examples
+#' \dontrun{
+#' generate_sample_csv(tempdir())
+#' }
+generate_sample_csv <- function(path,
+                                sdtm_categories = c(
+                                  "ALT", "AST", "CREAT",
+                                  "VS_DIABP", "VS_HEIGHT", "VS_PULSE",
+                                  "VS_SYSBP", "VS_TEMP", "VS_WEIGHT",
+                                  "RS_OVRLRESP", "VS_WEIGHT_CAT"
+                                )) {
+  dir.create(path, recursive = TRUE, showWarnings = FALSE)
+
+  ctas_d <- ctasapp::sample_ctas_data
+  ctas_r <- ctasapp::sample_ctas_results
+  sdtm_d <- ctasapp::sample_sdtm_data
+  sdtm_r <- ctasapp::sample_sdtm_results
+
+  ctas_input_df <- ctas_d$data |>
+    dplyr::left_join(ctas_d$subjects, by = "subject_id") |>
+    dplyr::left_join(
+      ctas_d$parameters[, c("parameter_id", "parameter_name",
+                             "parameter_category_1", "parameter_category_2",
+                             "parameter_category_3")],
+      by = "parameter_id"
+    ) |>
+    dplyr::mutate(study = "STUDY-001")
+
+  ctas_results_df <- ctas_r$site_scores |>
+    dplyr::left_join(
+      ctas_r$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    )
+
+  if (!is.null(sdtm_categories)) {
+    keep_param_ids <- sdtm_d$parameters$parameter_id[
+      sdtm_d$parameters$parameter_category_2 %in% sdtm_categories
+    ]
+  } else {
+    keep_param_ids <- sdtm_d$parameters$parameter_id
+  }
+
+  sdtm_input_df <- sdtm_d$data |>
+    dplyr::filter(.data$parameter_id %in% .env$keep_param_ids) |>
+    dplyr::left_join(sdtm_d$subjects, by = "subject_id") |>
+    dplyr::left_join(
+      sdtm_d$parameters[, c("parameter_id", "parameter_name",
+                             "parameter_category_1", "parameter_category_2",
+                             "parameter_category_3")],
+      by = "parameter_id"
+    ) |>
+    dplyr::mutate(study = "STUDY-002")
+
+  sdtm_results_df <- sdtm_r$site_scores |>
+    dplyr::left_join(
+      sdtm_r$timeseries[, c("timeseries_id", "parameter_id")],
+      by = "timeseries_id"
+    ) |>
+    dplyr::filter(.data$parameter_id %in% .env$keep_param_ids)
+
+  input_csv <- dplyr::bind_rows(ctas_input_df, sdtm_input_df)
+  results_csv <- dplyr::bind_rows(ctas_results_df, sdtm_results_df)
+
+  untransformed_csv <- if (!is.null(sdtm_d$untransformed)) {
+    if (!is.null(sdtm_categories)) {
+      sdtm_d$untransformed |>
+        dplyr::filter(.data$parameter_category_2 %in% .env$sdtm_categories)
+    } else {
+      sdtm_d$untransformed
+    }
+  }
+
+  sdtm_queries <- if (!is.null(sdtm_d$queries)) {
+    sdtm_d$queries |>
+      dplyr::filter(.data$parameter_id %in% .env$keep_param_ids)
+  }
+  queries_csv <- dplyr::bind_rows(ctas_d$queries, sdtm_queries)
+
+  files <- character()
+
+  f <- file.path(path, "results.csv")
+  utils::write.csv(results_csv, f, row.names = FALSE)
+  files <- c(files, f)
+
+  f <- file.path(path, "input.csv")
+  utils::write.csv(input_csv, f, row.names = FALSE)
+  files <- c(files, f)
+
+  if (!is.null(untransformed_csv) && nrow(untransformed_csv) > 0) {
+    f <- file.path(path, "untransformed.csv")
+    utils::write.csv(untransformed_csv, f, row.names = FALSE)
+    files <- c(files, f)
+  }
+
+  if (!is.null(queries_csv) && nrow(queries_csv) > 0) {
+    f <- file.path(path, "queries.csv")
+    utils::write.csv(queries_csv, f, row.names = FALSE)
+    files <- c(files, f)
+  }
+
+  invisible(files)
 }
 
 

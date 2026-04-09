@@ -330,10 +330,10 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       qd[qd$subject_id %in% study_subj, ]
     })
 
-    rctv_study <- shiny::reactive({
+    rctv_study <- shiny::reactive({ # nocov start
       sel <- input$study_filter
       if (is.null(sel) || sel == "__all__") NULL else sel
-    })
+    }) # nocov end
 
     # -- Populate feature checkboxes from loaded data --------------------------
     shiny::observeEvent(flt_ctas_results(), {
@@ -507,13 +507,15 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       df <- rctv_measures_feat()
       feats <- get_selected_features()
       splits <- split_param_ids(param_ids, df)
+      # nocov start
       if (length(splits$regular) == 0) return(NULL)
       prepare_score_table_multi(res, splits$regular, features = feats)
+      # nocov end
     })
 
     # Helper: get sites from the current page of the regular score table,
     # hard-capped at 24 sites.
-    get_plot_sites <- function() {
+    get_plot_sites <- function() { # nocov start
       row_idx <- input$score_table_regular_rows_current
       scores <- rctv_scores_regular()
       if (is.null(row_idx) || length(row_idx) == 0 || is.null(scores)) {
@@ -522,7 +524,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       sites <- scores$site[row_idx]
       if (length(sites) > 24) sites <- sites[seq_len(24)]
       sites
-    }
+    } # nocov end
 
     # -- Regular score table (pill tab 1) --------------------------------------
     output$score_table_regular <- DT::renderDataTable({

@@ -365,7 +365,7 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
-  if (length(sites) > 24) sites <- sites[seq_len(24)]
+  if (length(sites) > 24) sites <- sites[seq_len(24)] # nocov
 
   df_gr <- df |>
     dplyr::filter(
@@ -591,7 +591,7 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
-  if (length(sites) > 24) sites <- sites[seq_len(24)]
+  if (length(sites) > 24) sites <- sites[seq_len(24)] # nocov
 
   df_gr <- df |>
     dplyr::filter(

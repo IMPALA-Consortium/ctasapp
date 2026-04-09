@@ -4,7 +4,13 @@
 \alias{prepare_ts_data_multi}
 \title{Prepare timeseries data for outlier sites (multiple parameters)}
 \usage{
-prepare_ts_data_multi(measures, parameter_ids, thresh, untransformed = NULL)
+prepare_ts_data_multi(
+  measures,
+  parameter_ids,
+  thresh,
+  untransformed = NULL,
+  plot_type = "numeric"
+)
 }
 \arguments{
 \item{measures}{Data frame as returned by \code{\link[=prepare_measures]{prepare_measures()}}.}
@@ -16,6 +22,9 @@ prepare_ts_data_multi(measures, parameter_ids, thresh, untransformed = NULL)
 \item{untransformed}{Optional data frame with columns subject_id,
 parameter_category_2, timepoint_1_name, original_value, lower, upper,
 original_category. Pass NULL (default) to show transformed result only.}
+
+\item{plot_type}{Character scalar: "numeric", "categorical", or "bar".
+Controls column selection and deduplication.}
 }
 \value{
 A data frame sorted by site, subject_id, timepoint_rank.

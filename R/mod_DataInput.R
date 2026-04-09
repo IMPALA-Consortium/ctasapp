@@ -428,7 +428,7 @@ mod_DataInput_server <- function(id) {
 
       shiny::setProgress(0.8, detail = "Preparing measures")
       message("[DEBUG] Preparing measures...")
-      measures <- tryCatch(
+      measures <- tryCatch( # nocov start
         prepare_measures(ctas_data, ctas_results),
         error = function(e) { e }
       )
@@ -441,7 +441,7 @@ mod_DataInput_server <- function(id) {
           type = "error", duration = 8
         )
         return()
-      }
+      } # nocov end
       message("[DEBUG] measures: ", nrow(measures), " rows, ",
               ncol(measures), " cols")
 

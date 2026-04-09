@@ -124,17 +124,15 @@ test_that("read_upload_file errors for parquet without arrow", {
   unlink(tmp)
 })
 
-# -- Upload with bundled CSV fixtures ------------------------------------------
+# -- Upload with generated CSV fixtures ----------------------------------------
 
-test_that("bundled CSV fixtures load and validate", {
-  results_path <- system.file("extdata/results.csv", package = "ctasapp")
-  input_path <- system.file("extdata/input.csv", package = "ctasapp")
+test_that("generated CSV fixtures load and validate", {
+  tmp_dir <- tempfile("csv_fixtures")
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+  generate_sample_csv(tmp_dir)
 
-  skip_if(results_path == "" || input_path == "",
-          "CSV fixtures not installed")
-
-  results_df <- read_upload_file(results_path, "results.csv")
-  input_df <- read_upload_file(input_path, "input.csv")
+  results_df <- read_upload_file(file.path(tmp_dir, "results.csv"), "results.csv")
+  input_df <- read_upload_file(file.path(tmp_dir, "input.csv"), "input.csv")
 
   expect_length(validate_upload_results(results_df), 0)
   expect_length(validate_upload_input(input_df), 0)
@@ -147,15 +145,13 @@ test_that("bundled CSV fixtures load and validate", {
   expect_true(length(unique(out$ctas_data$subjects$study)) > 1)
 })
 
-test_that("bundled untransformed and queries CSVs validate", {
-  ut_path <- system.file("extdata/untransformed.csv", package = "ctasapp")
-  q_path <- system.file("extdata/queries.csv", package = "ctasapp")
+test_that("generated untransformed and queries CSVs validate", {
+  tmp_dir <- tempfile("csv_fixtures")
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+  generate_sample_csv(tmp_dir)
 
-  skip_if(ut_path == "" || q_path == "",
-          "CSV fixtures not installed")
-
-  ut_df <- read_upload_file(ut_path, "untransformed.csv")
-  q_df <- read_upload_file(q_path, "queries.csv")
+  ut_df <- read_upload_file(file.path(tmp_dir, "untransformed.csv"), "untransformed.csv")
+  q_df <- read_upload_file(file.path(tmp_dir, "queries.csv"), "queries.csv")
 
   expect_length(validate_upload_untransformed(ut_df), 0)
 
