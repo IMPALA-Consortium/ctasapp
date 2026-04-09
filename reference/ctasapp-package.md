@@ -7,5 +7,4 @@ series data.
 
 ## Author
 
-**Maintainer**: Bj\<c3\>\<b6\>rn Koneswarakantha
-<bjoern.koneswarakantha@roche.com>
+**Maintainer**: Björn Koneswarakantha <bjoern.koneswarakantha@roche.com>

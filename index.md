@@ -28,6 +28,50 @@ Once the app is running, click **Use Sample Data** on the Data tab, then
 switch to the **Fields** tab to explore parameter-level timeseries and
 site outlier scores.
 
+## Configuration
+
+The app ships with a default `config.yml` that controls colours,
+parameter icons, and which ctas features are pre-selected. To customise,
+copy the default config and pass your version to
+[`run_ctas_app()`](https://IMPALA-Consortium.github.io/ctasapp/reference/run_ctas_app.md):
+
+``` r
+# Copy the shipped default as a starting point
+file.copy(
+  system.file("config.yml", package = "ctasapp"),
+  "my_config.yml"
+)
+
+# Edit my_config.yml to taste, then launch:
+run_ctas_app(config = "my_config.yml")
+```
+
+The config file is YAML with three sections:
+
+``` yaml
+colors:
+  score_breaks: [1.3, 3, 5, 10]
+  plot: ["#9ED782", "#fed8019c", "#fed801", "#FEAA01", "#FF5858"]
+  table: ["#FFFFFF", "#feed01", "#fed801", "#FEAA01", "#FF5858"]
+  table_text: ["#1A1A1A", "#1A1A1A", "#1A1A1A", "#FFFFFF", "#FFFFFF"]
+  query_no_change: "#a380e9"
+  query_data_change: "#2790e0"
+
+icons:
+  range_normalized: flask
+  numeric: chart-line
+  categorical: water
+  bar: chart-bar
+
+features:
+  default:
+    - autocorr
+    - average
+    - sd
+```
+
+Any key you omit falls back to the built-in default.
+
 ## AI Disclaimer
 
 This package and documentation were developed with assistance from AI
@@ -42,7 +86,12 @@ we have conducted extensive quality control as part of our development
 process. In particular, we do the following during early development:
 
 - **Unit Tests** - Unit tests are written for all core functions, 100%
-  coverage required.
+  coverage required. Lines that cannot be tested in a non-interactive
+  context (e.g. Shiny reactive inputs, render callbacks, defensive
+  guards that only fire inside a running app) are annotated with
+  `# nocov` and excluded from the coverage metric. See the [Contributor
+  Guidelines](https://impala-consortium.github.io/ctasapp/articles/ContributorGuidelines.html)
+  for the full policy.
 - **Workflow Tests** -
   [`shiny::testServer()`](https://rdrr.io/pkg/shiny/man/testServer.html)
   tests verify that Shiny module logic behaves as expected.

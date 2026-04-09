@@ -280,12 +280,12 @@ only one timepoint per subject.
 ``` r
 bar_ids <- unique(m$parameter_id[grepl("^VS_WEIGHT_CAT=", m$parameter_id)])
 plot_bar(bar_ids, m, thresh = 1.3)
-#> Warning: There were 8 warnings in `dplyr::mutate()`.
+#> Warning: There were 32 warnings in `dplyr::mutate()`.
 #> The first warning was:
 #> ℹ In argument: `ci95_low = purrr::map2_dbl(...)`.
 #> Caused by warning in `stats::prop.test()`:
 #> ! Chi-squared approximation may be incorrect
-#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 7 remaining warnings.
+#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 31 remaining warnings.
 ```
 
 ![](UserGuide_files/figure-html/plot-bar-1.png)
@@ -305,3 +305,20 @@ flat files (CSV, Parquet, or RDA):
 See the collapsible “File format documentation” panel in the app’s Data
 tab for full column specifications. An optional `study` column in the
 Input file enables multi-study filtering in the Fields panel.
+
+### Generating example upload files
+
+Use
+[`generate_sample_csv()`](https://IMPALA-Consortium.github.io/ctasapp/reference/generate_sample_csv.md)
+to create a set of example CSV files from the bundled sample data. This
+is useful for trying the upload feature or as a template for your own
+data:
+
+``` r
+generate_sample_csv("~/my_upload_files")
+```
+
+This writes `results.csv`, `input.csv`, `untransformed.csv`, and
+`queries.csv` into the specified directory. The files combine both
+sample datasets (`sample_ctas_data` as STUDY-001 and `sample_sdtm_data`
+as STUDY-002) into a multi-study upload example.

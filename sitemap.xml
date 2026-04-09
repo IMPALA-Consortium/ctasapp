@@ -7,10 +7,12 @@
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/articles/index.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/authors.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/index.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/news/index.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/Input_BMI.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/Input_Labs.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/Input_RS.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/Input_VS.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/aggregate_results.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/apply_config.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/arrange_timepoints.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/build_param_lookup.html</loc></url>
@@ -22,6 +24,7 @@
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/filter_unscheduled.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/format_score.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/generate_sample_csv.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_default_features.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_param_icons.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_plot_visit_levels.html</loc></url>
@@ -63,6 +66,7 @@
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/sample_sdtm_results.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/score_colors.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/score_to_color.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/scores_with_parameter_id.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/simulate_query_data.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/sort_visits_natural.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/split_param_ids.html</loc></url>

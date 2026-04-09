@@ -10,6 +10,8 @@
   : Create ctas input from SDTM RS oncology domain
 - [`Input_VS()`](https://IMPALA-Consortium.github.io/ctasapp/reference/Input_VS.md)
   : Create ctas input from SDTM VS domain
+- [`aggregate_results()`](https://IMPALA-Consortium.github.io/ctasapp/reference/aggregate_results.md)
+  : Aggregate uploaded results by removing timeseries_id
 - [`apply_config()`](https://IMPALA-Consortium.github.io/ctasapp/reference/apply_config.md)
   : Apply configuration to package runtime state
 - [`arrange_timepoints()`](https://IMPALA-Consortium.github.io/ctasapp/reference/arrange_timepoints.md)
@@ -18,6 +20,8 @@
   : Combine multiple ctas input lists
 - [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md)
   : One-hot encode a categorical variable
+- [`generate_sample_csv()`](https://IMPALA-Consortium.github.io/ctasapp/reference/generate_sample_csv.md)
+  : Generate sample upload CSV files
 - [`get_default_features()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_default_features.md)
   : Get default features from configuration
 - [`get_param_icons()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_param_icons.md)

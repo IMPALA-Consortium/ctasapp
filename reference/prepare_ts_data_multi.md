@@ -10,7 +10,13 @@ but accepts a vector of parameter IDs. When `untransformed` is supplied
 ## Usage
 
 ``` r
-prepare_ts_data_multi(measures, parameter_ids, thresh, untransformed = NULL)
+prepare_ts_data_multi(
+  measures,
+  parameter_ids,
+  thresh,
+  untransformed = NULL,
+  plot_type = "numeric"
+)
 ```
 
 ## Arguments
@@ -33,6 +39,11 @@ prepare_ts_data_multi(measures, parameter_ids, thresh, untransformed = NULL)
   Optional data frame with columns subject_id, parameter_category_2,
   timepoint_1_name, original_value, lower, upper, original_category.
   Pass NULL (default) to show transformed result only.
+
+- plot_type:
+
+  Character scalar: "numeric", "categorical", or "bar". Controls column
+  selection and deduplication.
 
 ## Value
 

@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   ContributorGuidelines: ContributorGuidelines.html
   UserGuide: UserGuide.html
-last_built: 2026-03-30T12:25Z
+last_built: 2026-04-09T14:33Z
 urls:
   reference: https://IMPALA-Consortium.github.io/ctasapp/reference
   article: https://IMPALA-Consortium.github.io/ctasapp/articles
