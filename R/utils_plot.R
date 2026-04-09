@@ -601,12 +601,12 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
     dplyr::mutate(
       site_label = ifelse(
         .data$site %in% .env$sites,
-        paste0(.data$site, " - score: ", round(.data$max_score_site, 1)),
+        .data$site,
         "unflagged"
       )
     )
 
-  # Order facets by max_score descending, unflagged last
+  # Order bars by max_score descending, unflagged last
   site_order <- df_gr |>
     dplyr::distinct(.data$site_label, .data$max_score_site) |>
     dplyr::filter(.data$site_label != "unflagged") |>
