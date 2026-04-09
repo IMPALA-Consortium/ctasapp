@@ -487,26 +487,39 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       feats
     }
 
-    # -- Regular score table (pill tab 1) --------------------------------------
-    output$score_table_regular <- DT::renderDataTable({
+    # -- Scores data (shared between table & plot) -----------------------------
+    rctv_scores_regular <- shiny::reactive({
       res <- flt_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
       df <- rctv_measures_feat()
-      thresh <- input$thresh %||% 1.3
       feats <- get_selected_features()
-
       splits <- split_param_ids(param_ids, df)
+      if (length(splits$regular) == 0) return(NULL)
+      prepare_score_table_multi(res, splits$regular, features = feats)
+    })
+
+    # Helper: get sites from the current page of the regular score table,
+    # hard-capped at 24 sites.
+    get_plot_sites <- function() {
+      row_idx <- input$score_table_regular_rows_current
+      scores <- rctv_scores_regular()
+      if (is.null(row_idx) || length(row_idx) == 0 || is.null(scores)) {
+        return(NULL)
+      }
+      sites <- scores$site[row_idx]
+      if (length(sites) > 24) sites <- sites[seq_len(24)]
+      sites
+    }
+
+    # -- Regular score table (pill tab 1) --------------------------------------
+    output$score_table_regular <- DT::renderDataTable({
+      scores_display <- rctv_scores_regular()
       shiny::validate(shiny::need(
-        length(splits$regular) > 0,
-        "No regular (non-missingness) parameters for this field."
-      ))
-      scores_display <- prepare_score_table_multi(res, splits$regular,
-                                                  features = feats)
-      shiny::validate(shiny::need(
-        nrow(scores_display) > 0,
+        !is.null(scores_display) && nrow(scores_display) > 0,
         "No outlier scores available (too few timepoints for ctas to compute features)."
       ))
+      thresh <- input$thresh %||% 1.3
       render_score_dt(scores_display, thresh)
     })
 
@@ -639,14 +652,19 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
 
       qd <- flt_queries()
 
+      plot_sites <- get_plot_sites()
+
       if (plot_type == "categorical") {
         plot_categorical(param_ids, df, thresh = thresh,
+                         sites = plot_sites,
                          visit_order = visit_order)
       } else if (plot_type == "bar") {
         plot_bar(param_ids, df, thresh = thresh,
+                 sites = plot_sites,
                  visit_order = visit_order)
       } else {
-        plot_timeseries(param_ids, df, thresh = thresh, query_data = qd)
+        plot_timeseries(param_ids, df, thresh = thresh,
+                        sites = plot_sites, query_data = qd)
       }
     }, res = 96)
 

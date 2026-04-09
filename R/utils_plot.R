@@ -347,7 +347,7 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
     dplyr::filter(.data$result == 1) |>
     dplyr::left_join(site_max, by = "site") |>
     dplyr::mutate(
-      val_cat = sub(".*=", "", .data$parameter_id),
+      val_cat = sub(".*=", "", .data$parameter_name),
       val_cat = stringr::str_trunc(.data$val_cat, 30)
     )
 
@@ -365,12 +365,17 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
+  if (length(sites) > 24) sites <- sites[seq_len(24)]
 
   df_gr <- df |>
+    dplyr::filter(
+      .data$site %in% .env$sites |
+      .data$max_score_site <= .env$thresh
+    ) |>
     dplyr::mutate(
       site_label = ifelse(
-        .data$max_score_site > .env$thresh,
-        paste(.data$site, "*"),
+        .data$site %in% .env$sites,
+        paste0(.data$site, " - score: ", round(.data$max_score_site, 1)),
         "unflagged"
       )
     )
@@ -559,7 +564,8 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
     dplyr::filter(.data$result == 1) |>
     dplyr::left_join(site_max, by = "site") |>
     dplyr::mutate(
-      val_cat = sub(".*=", "", .data$parameter_id)
+      val_cat = sub(".*=", "", .data$parameter_name),
+      val_cat = stringr::str_trunc(.data$val_cat, 30)
     )
 
   if (nrow(df) == 0) {
@@ -576,12 +582,17 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
       dplyr::filter(.data$max_score_site > .env$thresh | dplyr::row_number() <= 6) |>
       dplyr::pull(.data$site)
   }
+  if (length(sites) > 24) sites <- sites[seq_len(24)]
 
   df_gr <- df |>
+    dplyr::filter(
+      .data$site %in% .env$sites |
+      .data$max_score_site <= .env$thresh
+    ) |>
     dplyr::mutate(
       site_label = ifelse(
-        .data$max_score_site > .env$thresh,
-        paste(.data$site, "*"),
+        .data$site %in% .env$sites,
+        paste0(.data$site, " - score: ", round(.data$max_score_site, 1)),
         "unflagged"
       )
     ) |>
