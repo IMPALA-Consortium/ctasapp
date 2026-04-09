@@ -32,7 +32,7 @@ mod_FieldDetail_ui <- function(id) {
       shiny::uiOutput(ns("param_list"))
     ),
     shiny::h4(shiny::textOutput(ns("plot_title"))),
-    shiny::h5("Site Scores by Feature"),
+    shiny::h5(shiny::textOutput(ns("plot_subtitle"))),
     bslib::navset_pill(
       bslib::nav_panel("Regular Scores", DT::dataTableOutput(ns("score_table_regular"))),
       bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
@@ -466,14 +466,26 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     output$plot_title <- shiny::renderText({
       p <- input$selected_param
       if (is.null(p)) return("Select a parameter")
+      p
+    })
 
-      parts <- character()
-      dl <- rctv_dataset_label()
-      if (!is.null(dl) && nzchar(dl)) parts <- c(parts, dl)
-      st <- rctv_study()
-      if (!is.null(st) && nzchar(st)) parts <- c(parts, paste("Study:", st))
-      parts <- c(parts, p)
-      paste(parts, collapse = " | ")
+    output$plot_subtitle <- shiny::renderText({
+      p <- input$selected_param
+      if (is.null(p)) return("")
+
+      df <- rctv_measures_feat()
+      shiny::req(df)
+      pid <- get_param_ids()
+      pnames <- df$parameter_name[df$parameter_id %in% pid &
+                                   df$parameter_category_3 != "ratio_missing"]
+      pnames <- unique(pnames)
+
+      # Extract distinct parts before and after "="
+      before_eq <- unique(sub("=.*", "", pnames))
+      after_eq <- unique(sub("^[^=]*=", "", pnames))
+      after_eq <- setdiff(after_eq, before_eq)
+      parts <- if (length(after_eq) > 0) c(before_eq, sort(after_eq)) else before_eq
+      paste(parts, collapse = ", ")
     })
 
     # -- Helper: get selected features for score table -------------------------

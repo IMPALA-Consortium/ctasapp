@@ -380,6 +380,15 @@ plot_categorical <- function(param_ids, df_measures, thresh = 0, sites = NULL,
       )
     )
 
+  # Order facets by max_score descending, unflagged last
+  site_order <- df_gr |>
+    dplyr::distinct(.data$site_label, .data$max_score_site) |>
+    dplyr::filter(.data$site_label != "unflagged") |>
+    dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
+    dplyr::pull(.data$site_label)
+  if ("unflagged" %in% df_gr$site_label) site_order <- c(site_order, "unflagged")
+  df_gr$site_label <- factor(df_gr$site_label, levels = site_order)
+
   # Handle duplicate timepoints per patient by appending padded rank
   df_plot <- df_gr |>
     dplyr::mutate(
@@ -595,7 +604,18 @@ plot_bar <- function(param_ids, df_measures, thresh = 0, sites = NULL,
         paste0(.data$site, " - score: ", round(.data$max_score_site, 1)),
         "unflagged"
       )
-    ) |>
+    )
+
+  # Order facets by max_score descending, unflagged last
+  site_order <- df_gr |>
+    dplyr::distinct(.data$site_label, .data$max_score_site) |>
+    dplyr::filter(.data$site_label != "unflagged") |>
+    dplyr::arrange(dplyr::desc(.data$max_score_site)) |>
+    dplyr::pull(.data$site_label)
+  if ("unflagged" %in% df_gr$site_label) site_order <- c(site_order, "unflagged")
+  df_gr$site_label <- factor(df_gr$site_label, levels = site_order)
+
+  df_gr <- df_gr |>
     dplyr::distinct(.data$subject_id, .data$site_label, .data$timepoint_1_name,
                     .data$timepoint_rank, .data$val_cat)
 
