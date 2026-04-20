@@ -208,6 +208,7 @@ mod_DataInput_server <- function(id) {
     rv_dataset_label <- shiny::reactiveVal(NULL)
     rv_studies <- shiny::reactiveVal(NULL)
     rv_available_studies <- shiny::reactiveVal(NULL)
+    rv_selected_study <- shiny::reactiveVal(NULL)
 
     # -- Detect studies from results file when uploaded -----------------------
     shiny::observeEvent(input$file_results, { # nocov start
@@ -329,9 +330,12 @@ mod_DataInput_server <- function(id) {
           if ("study" %in% names(input_df)) {
             input_df <- input_df[input_df$study == upload_study, ]
           }
+          rv_selected_study(upload_study)
           message("[DEBUG] After study filter: results_df ",
                   nrow(results_df), " rows, input_df ",
                   nrow(input_df), " rows")
+        } else {
+          rv_selected_study(NULL)
         }
 
         shiny::setProgress(0.2, detail = "Validating files")
@@ -545,7 +549,8 @@ mod_DataInput_server <- function(id) {
       untransformed = rv_untransformed,
       queries = rv_queries,
       dataset_label = rv_dataset_label,
-      studies = rv_studies
+      studies = rv_studies,
+      selected_study = rv_selected_study
     )
   })
 }

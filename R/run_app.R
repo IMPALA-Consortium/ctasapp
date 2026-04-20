@@ -29,6 +29,9 @@ run_ctas_app <- function(config = NULL, ...) {
     ),
     bslib::nav_spacer(),
     bslib::nav_item(
+      shiny::uiOutput("dataset_badge")
+    ),
+    bslib::nav_item(
       shiny::div(
         style = "min-width:250px;",
         shiny::selectizeInput(
@@ -55,6 +58,19 @@ run_ctas_app <- function(config = NULL, ...) {
         choices = sites,
         selected = character(0),
         server = FALSE
+      )
+    })
+
+    # Show dataset label and study in navbar
+    output$dataset_badge <- shiny::renderUI({
+      label <- data$dataset_label()
+      if (is.null(label)) return(NULL)
+      study <- data$selected_study()
+      text <- if (!is.null(study)) paste0(label, " \u2014 ", study) else label
+      shiny::tags$span(
+        class = "badge bg-info text-white",
+        style = "font-size: 0.85em;",
+        text
       )
     })
 
