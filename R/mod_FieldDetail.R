@@ -843,20 +843,42 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       q_filtered <- qd |>
         dplyr::filter(.data$parameter_id %in% param_ids) |>
         dplyr::left_join(subj_site, by = "subject_id") |>
-        dplyr::filter(.data$site %in% outlier_sites) |>
-        dplyr::select(
-          "site", "subject_id", "visit",
-          dplyr::any_of(c("domain", "field",
-                          "query_status", "query_type")),
-          "data_change",
-          dplyr::any_of(c("query_text", "query_answer",
-                          "value_first_entry", "value_now"))
-        )
+        dplyr::filter(.data$site %in% outlier_sites)
+
+      # Move key columns to the front; keep all remaining columns after
+      front_cols <- intersect(
+        c("site", "subject_id", "visit", "domain", "field",
+          "query_status", "query_type", "data_change",
+          "query_text", "query_answer",
+          "value_first_entry", "value_at_query_open", "value_at_open",
+          "value_at_query_close", "value_at_close",
+          "value_now", "value_at_current"),
+        names(q_filtered)
+      )
+      rest_cols <- setdiff(names(q_filtered), front_cols)
+      q_filtered <- q_filtered[, c(front_cols, rest_cols), drop = FALSE]
 
       shiny::validate(shiny::need(
         nrow(q_filtered) > 0,
         "No queries for outlier sites on this parameter."
       ))
+
+      # Default-visible columns; hide everything else via colvis
+      default_visible <- c(
+        "site", "subject_id", "visit", "domain", "field",
+        "query_status", "query_type", "data_change",
+        "query_text", "query_answer",
+        "value_first_entry", "value_at_query_open", "value_at_open",
+        "value_at_query_close", "value_at_close",
+        "value_now", "value_at_current"
+      )
+      hidden_idx <- which(!names(q_filtered) %in% default_visible) - 1L
+
+      col_defs <- if (length(hidden_idx) > 0) {
+        list(list(visible = FALSE, targets = as.list(hidden_idx)))
+      } else {
+        NULL
+      }
 
       DT::datatable(
         q_filtered,
@@ -869,7 +891,8 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
           dom = "Blfrtip",
           buttons = list("copy", "csv", "excel", "colvis"),
           colReorder = TRUE,
-          scrollX = TRUE
+          scrollX = TRUE,
+          columnDefs = col_defs
         )
       )
     })
