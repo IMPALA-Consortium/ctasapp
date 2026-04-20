@@ -308,6 +308,9 @@ test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM
       alb_id <- lookup$display_id[lookup$display_id == "ALB"]
       session$setInputs(selected_param = alb_id)
 
+      scores <- rctv_scores_regular()
+      session$setInputs(score_table_regular_rows_current = seq_len(nrow(scores)))
+
       tbl <- output$ts_data_table
       expect_true(!is.null(tbl))
     }
@@ -630,6 +633,9 @@ test_that("mod_FieldDetail_server query_table renders for SDTM data", {
       lookup <- rctv_param_lookup()
       num_id <- lookup$display_id[lookup$plot_type == "numeric"][1]
       session$setInputs(selected_param = num_id)
+
+      scores <- rctv_scores_regular()
+      session$setInputs(score_table_regular_rows_current = seq_len(nrow(scores)))
 
       tbl <- output$query_table
       expect_true(!is.null(tbl))

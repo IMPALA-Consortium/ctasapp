@@ -772,6 +772,8 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       df <- rctv_measures_feat()
       shiny::req(df)
       shiny::req(input$selected_param)
+      plot_sites <- rctv_plot_sites()
+      shiny::req(plot_sites)
 
       lookup <- rctv_param_lookup()
       sel <- input$selected_param
@@ -782,11 +784,11 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       param_ids <- filter_param_ids(param_ids)
       shiny::req(length(param_ids) > 0)
 
-      thresh <- input$thresh %||% 1.3
       untransformed <- flt_untransformed()
-      ts_data <- prepare_ts_data_multi(df, param_ids, thresh,
+      ts_data <- prepare_ts_data_multi(df, param_ids, thresh = 0,
                                        untransformed = untransformed,
-                                       plot_type = plot_type)
+                                       plot_type = plot_type,
+                                       sites = plot_sites)
       shiny::validate(shiny::need(
         nrow(ts_data) > 0,
         "No outlier site data to display (no sites exceed the threshold for this parameter)."
@@ -824,18 +826,14 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         "No query data available for this dataset."
       ))
       shiny::req(input$selected_param)
+      plot_sites <- rctv_plot_sites()
+      shiny::req(plot_sites)
 
       param_ids <- get_param_ids()
       param_ids <- filter_param_ids(param_ids)
       shiny::req(length(param_ids) > 0)
 
       df <- rctv_measures_feat()
-      thresh <- input$thresh %||% 1.3
-      outlier_sites <- df |>
-        dplyr::filter(.data$parameter_id %in% param_ids) |>
-        dplyr::filter(.data$max_score > thresh) |>
-        dplyr::distinct(.data$site) |>
-        dplyr::pull(.data$site)
 
       subj_site <- df |>
         dplyr::distinct(.data$subject_id, .data$site)
@@ -843,7 +841,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       q_filtered <- qd |>
         dplyr::filter(.data$parameter_id %in% param_ids) |>
         dplyr::left_join(subj_site, by = "subject_id") |>
-        dplyr::filter(.data$site %in% outlier_sites)
+        dplyr::filter(.data$site %in% plot_sites)
 
       # Move key columns to the front; keep all remaining columns after
       front_cols <- intersect(

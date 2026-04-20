@@ -245,24 +245,31 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 #'   original_category. Pass NULL (default) to show transformed result only.
 #' @param plot_type Character scalar: "numeric", "categorical", or "bar".
 #'   Controls column selection and deduplication.
+#' @param sites Optional character vector of site names. When provided, these
+#'   sites are used directly instead of computing outlier sites from `thresh`.
 #'
 #' @return A data frame sorted by site, subject_id, timepoint_rank.
 #' @export
 prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
                                   untransformed = NULL,
-                                  plot_type = "numeric") {
-  # Determine outlier sites from the max score across ALL parameter_ids in the
-
-  # group, so that categorical one-hot encodings with individually low scores
-  # are still included when a sibling encoding flags the site.
-  outlier_sites <- measures |>
-    dplyr::filter(.data$parameter_id %in% .env$parameter_ids) |>
-    dplyr::summarise(
-      group_max = max(.data$max_score, na.rm = TRUE),
-      .by = "site"
-    ) |>
-    dplyr::filter(.data$group_max > .env$thresh) |>
-    dplyr::pull(.data$site)
+                                  plot_type = "numeric",
+                                  sites = NULL) {
+  # When explicit sites are provided, use them directly; otherwise determine
+  # outlier sites from the max score across ALL parameter_ids in the group,
+  # so that categorical one-hot encodings with individually low scores are
+  # still included when a sibling encoding flags the site.
+  if (!is.null(sites)) {
+    outlier_sites <- sites
+  } else {
+    outlier_sites <- measures |>
+      dplyr::filter(.data$parameter_id %in% .env$parameter_ids) |>
+      dplyr::summarise(
+        group_max = max(.data$max_score, na.rm = TRUE),
+        .by = "site"
+      ) |>
+      dplyr::filter(.data$group_max > .env$thresh) |>
+      dplyr::pull(.data$site)
+  }
 
   filtered <- measures |>
     dplyr::filter(
