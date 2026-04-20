@@ -174,7 +174,8 @@ mod_DataInput_ui <- function(id) {
                          "Untransformed data (optional)",
                          accept = c(".csv", ".parquet", ".rda", ".rdata")),
         shiny::fileInput(ns("file_queries"), "Query data (optional)",
-                         accept = c(".csv", ".parquet", ".rda", ".rdata"))
+                         accept = c(".csv", ".parquet", ".rda", ".rdata")),
+        shiny::uiOutput(ns("study_selector"))
       ),
       shiny::actionButton(
         ns("load_data"),
@@ -206,6 +207,38 @@ mod_DataInput_server <- function(id) {
     rv_queries <- shiny::reactiveVal(NULL)
     rv_dataset_label <- shiny::reactiveVal(NULL)
     rv_studies <- shiny::reactiveVal(NULL)
+    rv_available_studies <- shiny::reactiveVal(NULL)
+
+    # -- Detect studies from results file when uploaded -----------------------
+    shiny::observeEvent(input$file_results, { # nocov start
+      res_file <- input$file_results
+      if (is.null(res_file)) return()
+      results_df <- tryCatch(
+        read_upload_file(res_file$datapath, res_file$name),
+        error = function(e) { NULL }
+      )
+      if (is.null(results_df) || !"study" %in% names(results_df)) {
+        rv_available_studies(NULL)
+        return()
+      }
+      studies <- sort(unique(results_df$study))
+      if (length(studies) > 1) {
+        rv_available_studies(studies)
+      } else {
+        rv_available_studies(NULL)
+      }
+    }) # nocov end
+
+    output$study_selector <- shiny::renderUI({ # nocov start
+      studies <- rv_available_studies()
+      if (is.null(studies)) return(NULL)
+      shiny::selectInput(
+        session$ns("upload_study"),
+        "Select Study",
+        choices = stats::setNames(studies, studies),
+        selected = studies[1]
+      )
+    }) # nocov end
 
     shiny::observeEvent(input$load_data, {
       message("[DEBUG] === Load Data button clicked ===")
@@ -285,6 +318,21 @@ mod_DataInput_server <- function(id) {
         message("[DEBUG] input_df: ", nrow(input_df), " rows, ",
                 ncol(input_df), " cols: ",
                 paste(names(input_df), collapse = ", "))
+
+        # -- Filter to selected study when multi-study data -------------------
+        upload_study <- input$upload_study
+        if (!is.null(upload_study) && !is.null(rv_available_studies())) {
+          message("[DEBUG] Filtering to study: ", upload_study)
+          if ("study" %in% names(results_df)) {
+            results_df <- results_df[results_df$study == upload_study, ]
+          }
+          if ("study" %in% names(input_df)) {
+            input_df <- input_df[input_df$study == upload_study, ]
+          }
+          message("[DEBUG] After study filter: results_df ",
+                  nrow(results_df), " rows, input_df ",
+                  nrow(input_df), " rows")
+        }
 
         shiny::setProgress(0.2, detail = "Validating files")
         message("[DEBUG] Validating uploaded files...")

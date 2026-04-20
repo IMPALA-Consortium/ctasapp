@@ -11,7 +11,8 @@ mod_FieldDetail_server(
   rctv_untransformed = shiny::reactiveVal(NULL),
   rctv_queries = shiny::reactiveVal(NULL),
   rctv_dataset_label = shiny::reactiveVal(NULL),
-  rctv_studies = shiny::reactiveVal(NULL)
+  rctv_studies = shiny::reactiveVal(NULL),
+  rctv_selected_sites = shiny::reactiveVal(NULL)
 )
 }
 \arguments{
@@ -33,6 +34,10 @@ string (e.g. "ctas sample", "SDTM sample", or a user filename).}
 \item{rctv_studies}{Reactive expression returning a character vector of
 available study names, or NULL when data has no study column or only
 one study.}
+
+\item{rctv_selected_sites}{Reactive expression returning a character vector
+of selected site names from the global site filter, or NULL when no
+sites are selected.}
 }
 \description{
 Renders a clickable list of parameters in the sidebar. On selection,

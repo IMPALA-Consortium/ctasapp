@@ -26,14 +26,48 @@ run_ctas_app <- function(config = NULL, ...) {
       title = "Fields",
       icon = shiny::icon("chart-line"),
       mod_FieldDetail_ui("field_detail")
+    ),
+    bslib::nav_spacer(),
+    bslib::nav_item(
+      shiny::div(
+        style = "min-width:250px;",
+        shiny::selectizeInput(
+          "global_site_filter",
+          label = NULL,
+          choices = NULL,
+          multiple = TRUE,
+          options = list(placeholder = "Filter sites...")
+        )
+      )
     )
   )
 
   server <- function(input, output, session) {
     data <- mod_DataInput_server("data_input")
+
+    # Populate global site filter when data loads
+    shiny::observeEvent(data$measures(), {
+      m <- data$measures()
+      if (is.null(m)) return()
+      sites <- sort(unique(m$site))
+      shiny::updateSelectizeInput(
+        session, "global_site_filter",
+        choices = sites,
+        selected = character(0),
+        server = FALSE
+      )
+    })
+
+    rctv_selected_sites <- shiny::reactive({
+      sel <- input$global_site_filter
+      if (is.null(sel) || length(sel) == 0) return(NULL)
+      sel
+    })
+
     mod_FieldDetail_server(
       "field_detail", data$measures, data$ctas_results, data$untransformed,
-      data$queries, data$dataset_label, data$studies
+      data$queries, data$dataset_label, data$studies,
+      rctv_selected_sites = rctv_selected_sites
     )
   }
 

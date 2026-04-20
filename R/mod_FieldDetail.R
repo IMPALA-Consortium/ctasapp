@@ -29,7 +29,16 @@ mod_FieldDetail_ui <- function(id) {
         open = FALSE
       ),
       shiny::hr(),
-      shiny::uiOutput(ns("param_list"))
+      shiny::textInput(ns("param_filter"), label = NULL,
+                       placeholder = "Filter fields..."),
+      shiny::selectInput(ns("param_sort"), label = NULL,
+                         choices = c("Outliers" = "outliers",
+                                     "A-Z" = "alpha"),
+                         selected = "outliers"),
+      shiny::tags$div(
+        style = "max-height:60vh;overflow-y:auto;",
+        shiny::uiOutput(ns("param_list"))
+      )
     ),
     shiny::h4(shiny::textOutput(ns("plot_title"))),
     shiny::h5(shiny::textOutput(ns("plot_subtitle"))),
@@ -194,16 +203,34 @@ split_param_ids <- function(param_ids, df_measures) {
 #'
 #' @param scores_display Data frame from [prepare_score_table_multi()].
 #' @param thresh Numeric threshold for outlier column.
+#' @param selected_sites Optional character vector of selected site names.
+#'   When non-NULL, a "selected" column is added and pre-filtered to "yes".
 #' @return A DT datatable object.
 #' @keywords internal
-render_score_dt <- function(scores_display, thresh) {
+render_score_dt <- function(scores_display, thresh, selected_sites = NULL) {
   scores_display$outlier <- ifelse(scores_display$max_score > thresh, "yes", "no")
 
-  feature_cols <- setdiff(names(scores_display), c("site", "max_score", "outlier"))
+  has_site_filter <- !is.null(selected_sites) && length(selected_sites) > 0
+  if (has_site_filter) {
+    scores_display$selected <- ifelse(
+      scores_display$site %in% selected_sites, "yes", "no"
+    )
+  }
 
-  outlier_col_idx <- which(names(scores_display) == "outlier")
+  feature_cols <- setdiff(names(scores_display),
+                          c("site", "max_score", "outlier", "selected"))
+
   search_cols <- vector("list", ncol(scores_display))
-  search_cols[[outlier_col_idx]] <- list(search = "yes")
+
+  if (has_site_filter) {
+    # When sites are selected, filter by selected only (not by outlier)
+    selected_col_idx <- which(names(scores_display) == "selected")
+    search_cols[[selected_col_idx]] <- list(search = "yes")
+  } else {
+    # When no sites selected, default to showing outliers only
+    outlier_col_idx <- which(names(scores_display) == "outlier")
+    search_cols[[outlier_col_idx]] <- list(search = "yes")
+  }
 
   dt <- DT::datatable(
     scores_display,
@@ -262,12 +289,16 @@ render_score_dt <- function(scores_display, thresh) {
 #' @param rctv_studies Reactive expression returning a character vector of
 #'   available study names, or NULL when data has no study column or only
 #'   one study.
+#' @param rctv_selected_sites Reactive expression returning a character vector
+#'   of selected site names from the global site filter, or NULL when no
+#'   sites are selected.
 #' @export
 mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
                                    rctv_untransformed = shiny::reactiveVal(NULL),
                                    rctv_queries = shiny::reactiveVal(NULL),
                                    rctv_dataset_label = shiny::reactiveVal(NULL),
-                                   rctv_studies = shiny::reactiveVal(NULL)) {
+                                   rctv_studies = shiny::reactiveVal(NULL),
+                                   rctv_selected_sites = shiny::reactiveVal(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -399,6 +430,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       lookup <- rctv_param_lookup()
       thresh <- input$thresh %||% 1.3
       include_miss <- input$include_miss %||% TRUE
+      sel_sites <- rctv_selected_sites()
 
       pid_map <- data.frame(
         display_id = rep(lookup$display_id, lengths(lookup$parameter_ids)),
@@ -419,6 +451,12 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         dplyr::distinct(.data$site, .data$parameter_id, .data$max_score) |>
         dplyr::left_join(pid_map, by = "parameter_id")
 
+      # When sites are selected globally, only count outliers among those sites
+      if (!is.null(sel_sites) && length(sel_sites) > 0) {
+        site_scores <- site_scores |>
+          dplyr::filter(.data$site %in% .env$sel_sites)
+      }
+
       site_scores |>
         dplyr::summarise(
           max_score = max(.data$max_score, na.rm = TRUE),
@@ -435,6 +473,22 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       stats <- param_outliers()
       shiny::req(stats)
       lookup <- rctv_param_lookup()
+
+      # Apply free-text filter
+      filter_text <- input$param_filter %||% ""
+      if (nzchar(filter_text)) {
+        keep <- grepl(filter_text, stats$display_id, ignore.case = TRUE)
+        stats <- stats[keep, , drop = FALSE]
+      }
+      if (nrow(stats) == 0) {
+        return(shiny::tags$p(class = "text-muted", "No matching fields"))
+      }
+
+      # Apply sort
+      sort_mode <- input$param_sort %||% "outliers"
+      if (sort_mode == "alpha") {
+        stats <- stats[order(stats$display_id), , drop = FALSE]
+      }
 
       labels <- unname(lapply(stats$display_id, function(pid) {
         n_out <- stats$n_outlier_sites[stats$display_id == pid]
@@ -534,7 +588,8 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         "No outlier scores available (too few timepoints for ctas to compute features)."
       ))
       thresh <- input$thresh %||% 1.3
-      render_score_dt(scores_display, thresh)
+      sel_sites <- rctv_selected_sites()
+      render_score_dt(scores_display, thresh, selected_sites = sel_sites)
     })
 
     # -- Missingness score table (pill tab 2) ----------------------------------
@@ -557,7 +612,8 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         nrow(scores_display) > 0,
         "No missingness scores available (too few timepoints for ctas to compute features)."
       ))
-      render_score_dt(scores_display, thresh)
+      render_score_dt(scores_display, thresh,
+                      selected_sites = rctv_selected_sites())
     })
 
     # -- Visit sorter (arrow buttons for categorical/bar x-axis) ---------------
@@ -648,10 +704,41 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     })
 
     # -- Timeseries / categorical / bar plot -----------------------------------
+    # Track which parameter the DT's rows_current belongs to, so we can
+    # ignore stale row indices after the user switches fields.
+    rv_dt_param <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(input$selected_param, { # nocov start
+      rv_dt_param(NULL)
+    }) # nocov end
+
+    shiny::observeEvent(input$score_table_regular_rows_current, { # nocov start
+      rv_dt_param(input$selected_param)
+    }) # nocov end
+
+    rctv_plot_sites <- shiny::reactive({
+      scores <- rctv_scores_regular()
+      if (is.null(scores) || nrow(scores) == 0) return(NULL)
+
+      # Only use DT rows if they belong to the current parameter
+      row_idx <- input$score_table_regular_rows_current
+      dt_fresh <- identical(rv_dt_param(), input$selected_param)
+
+      if (!dt_fresh || is.null(row_idx) || length(row_idx) == 0) {
+        return(NULL) # nocov
+      }
+
+      sites <- scores$site[row_idx]
+      if (length(sites) > 24) sites <- sites[seq_len(24)]
+      sites
+    })
+
     output$ts_plot <- shiny::renderPlot({
       df <- rctv_measures_feat()
       shiny::req(df)
       shiny::req(input$selected_param)
+      plot_sites <- rctv_plot_sites()
+      shiny::req(plot_sites)
 
       lookup <- rctv_param_lookup()
       sel <- input$selected_param
@@ -665,8 +752,6 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       visit_order <- rctv_visit_order_applied()
 
       qd <- flt_queries()
-
-      plot_sites <- get_plot_sites()
 
       if (plot_type == "categorical") {
         plot_categorical(param_ids, df, thresh = thresh,

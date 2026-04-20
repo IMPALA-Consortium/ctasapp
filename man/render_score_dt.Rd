@@ -4,12 +4,15 @@
 \alias{render_score_dt}
 \title{Render a score DT table with shared colour constants}
 \usage{
-render_score_dt(scores_display, thresh)
+render_score_dt(scores_display, thresh, selected_sites = NULL)
 }
 \arguments{
 \item{scores_display}{Data frame from \code{\link[=prepare_score_table_multi]{prepare_score_table_multi()}}.}
 
 \item{thresh}{Numeric threshold for outlier column.}
+
+\item{selected_sites}{Optional character vector of selected site names.
+When non-NULL, a "selected" column is added and pre-filtered to "yes".}
 }
 \value{
 A DT datatable object.

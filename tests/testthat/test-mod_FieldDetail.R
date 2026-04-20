@@ -186,6 +186,7 @@ test_that("mod_FieldDetail_server dispatches categorical plot", {
       lookup <- rctv_param_lookup()
       cat_id <- lookup$display_id[lookup$plot_type == "categorical"][1]
       session$setInputs(selected_param = cat_id)
+      session$setInputs(score_table_regular_rows_current = 1:10)
 
       p <- output$ts_plot
       expect_true(!is.null(p))
@@ -209,6 +210,7 @@ test_that("mod_FieldDetail_server dispatches bar plot", {
       lookup <- rctv_param_lookup()
       bar_id <- lookup$display_id[lookup$plot_type == "bar"][1]
       session$setInputs(selected_param = bar_id)
+      session$setInputs(score_table_regular_rows_current = 1:10)
 
       p <- output$ts_plot
       expect_true(!is.null(p))
@@ -232,6 +234,7 @@ test_that("mod_FieldDetail_server dispatches numeric plot with norm+missing", {
       lookup <- rctv_param_lookup()
       alb_id <- lookup$display_id[lookup$display_id == "ALB"]
       session$setInputs(selected_param = alb_id)
+      session$setInputs(score_table_regular_rows_current = 1:10)
 
       p <- output$ts_plot
       expect_true(!is.null(p))
@@ -353,6 +356,7 @@ test_that("mod_FieldDetail_server include_miss=FALSE filters plot param_ids", {
       lookup <- rctv_param_lookup()
       alb_id <- lookup$display_id[lookup$display_id == "ALB"]
       session$setInputs(selected_param = alb_id)
+      session$setInputs(score_table_regular_rows_current = 1:10)
 
       p <- output$ts_plot
       expect_true(!is.null(p))
