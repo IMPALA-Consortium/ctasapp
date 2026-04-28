@@ -13,7 +13,7 @@ subject_id + parameter_category_2 + timepoint_1_name."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">ctasapp</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,7 +57,8 @@ values (original_value, lower, upper, original_category) keyed on
 <span>  <span class="va">parameter_ids</span>,</span>
 <span>  <span class="va">thresh</span>,</span>
 <span>  untransformed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  plot_type <span class="op">=</span> <span class="st">"numeric"</span></span>
+<span>  plot_type <span class="op">=</span> <span class="st">"numeric"</span>,</span>
+<span>  sites <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -86,6 +87,11 @@ original_category. Pass NULL (default) to show transformed result only.</p></dd>
 <dt id="arg-plot-type">plot_type<a class="anchor" aria-label="anchor" href="#arg-plot-type"></a></dt>
 <dd><p>Character scalar: "numeric", "categorical", or "bar".
 Controls column selection and deduplication.</p></dd>
+
+
+<dt id="arg-sites">sites<a class="anchor" aria-label="anchor" href="#arg-sites"></a></dt>
+<dd><p>Optional character vector of site names. When provided, these
+sites are used directly instead of computing outlier sites from <code>thresh</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

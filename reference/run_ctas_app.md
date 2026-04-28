@@ -5,7 +5,7 @@ Launches the interactive ctas visualization application.
 ## Usage
 
 ``` r
-run_ctas_app(config = NULL, ...)
+run_ctas_app(config = NULL, verbose = TRUE, ...)
 ```
 
 ## Arguments
@@ -16,6 +16,11 @@ run_ctas_app(config = NULL, ...)
   config shipped with the package. See
   [`load_config()`](https://IMPALA-Consortium.github.io/ctasapp/reference/load_config.md)
   for the expected structure.
+
+- verbose:
+
+  Logical. When `TRUE` (default), progress and diagnostic messages are
+  printed to the console. Set to `FALSE` to run silently.
 
 - ...:
 

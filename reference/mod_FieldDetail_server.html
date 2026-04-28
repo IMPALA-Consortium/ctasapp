@@ -15,7 +15,7 @@ checkbox group."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">ctasapp</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,7 +62,8 @@ checkbox group.</p>
 <span>  rctv_untransformed <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  rctv_queries <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  rctv_dataset_label <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
-<span>  rctv_studies <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span>  rctv_studies <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
+<span>  rctv_selected_sites <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -101,6 +102,12 @@ string (e.g. "ctas sample", "SDTM sample", or a user filename).</p></dd>
 <dd><p>Reactive expression returning a character vector of
 available study names, or NULL when data has no study column or only
 one study.</p></dd>
+
+
+<dt id="arg-rctv-selected-sites">rctv_selected_sites<a class="anchor" aria-label="anchor" href="#arg-rctv-selected-sites"></a></dt>
+<dd><p>Reactive expression returning a character vector
+of selected site names from the global site filter, or NULL when no
+sites are selected.</p></dd>
 
 </dl></div>
 

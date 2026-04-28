@@ -15,7 +15,8 @@ prepare_ts_data_multi(
   parameter_ids,
   thresh,
   untransformed = NULL,
-  plot_type = "numeric"
+  plot_type = "numeric",
+  sites = NULL
 )
 ```
 
@@ -44,6 +45,11 @@ prepare_ts_data_multi(
 
   Character scalar: "numeric", "categorical", or "bar". Controls column
   selection and deduplication.
+
+- sites:
+
+  Optional character vector of site names. When provided, these sites
+  are used directly instead of computing outlier sites from `thresh`.
 
 ## Value
 

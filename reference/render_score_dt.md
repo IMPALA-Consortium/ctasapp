@@ -5,7 +5,7 @@ Render a score DT table with shared colour constants
 ## Usage
 
 ``` r
-render_score_dt(scores_display, thresh)
+render_score_dt(scores_display, thresh, selected_sites = NULL)
 ```
 
 ## Arguments
@@ -18,6 +18,11 @@ render_score_dt(scores_display, thresh)
 - thresh:
 
   Numeric threshold for outlier column.
+
+- selected_sites:
+
+  Optional character vector of selected site names. When non-NULL, a
+  "selected" column is added and pre-filtered to "yes".
 
 ## Value
 
