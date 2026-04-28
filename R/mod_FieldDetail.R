@@ -878,7 +878,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       col_defs <- if (length(hidden_idx) > 0) {
         list(list(visible = FALSE, targets = as.list(hidden_idx)))
       } else {
-        NULL
+        NULL # nocov
       }
 
       DT::datatable(

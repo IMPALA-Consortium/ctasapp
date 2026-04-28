@@ -96,6 +96,42 @@ test_that("split_param_ids returns empty missingness when none present", {
   expect_length(splits$missingness, 0)
 })
 
+test_that("render_score_dt uses selected-site filtering branch", {
+  scores <- data.frame(
+    site = c("A", "B", "C"),
+    max_score = c(2.5, 0.4, 1.8),
+    feature_x = c(1, 2, 3),
+    stringsAsFactors = FALSE
+  )
+
+  dt <- render_score_dt(scores, thresh = 1.3, selected_sites = c("A", "C"))
+
+  expect_s3_class(dt, "datatables")
+  expect_true("selected" %in% names(dt$x$data))
+
+  selected_idx <- which(names(dt$x$data) == "selected")
+  expect_true(length(selected_idx) == 1)
+  expect_equal(dt$x$options$searchCols[[selected_idx]]$search, "yes")
+})
+
+test_that("render_score_dt defaults to outlier filtering without selected sites", {
+  scores <- data.frame(
+    site = c("A", "B"),
+    max_score = c(2.5, 0.4),
+    feature_x = c(1, 2),
+    stringsAsFactors = FALSE
+  )
+
+  dt <- render_score_dt(scores, thresh = 1.3)
+
+  expect_s3_class(dt, "datatables")
+  expect_false("selected" %in% names(dt$x$data))
+
+  outlier_idx <- which(names(dt$x$data) == "outlier")
+  expect_true(length(outlier_idx) == 1)
+  expect_equal(dt$x$options$searchCols[[outlier_idx]]$search, "yes")
+})
+
 
 test_that("mod_FieldDetail_server renders outputs with ctas sample", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)
@@ -338,6 +374,79 @@ test_that("mod_FieldDetail_server include_miss=FALSE filters outlier counts", {
       # change (or keep equal) the outlier counts
       expect_true(nrow(stats_with) > 0)
       expect_true(nrow(stats_without) > 0)
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server applies global site filter in param_outliers", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  rv_sites <- shiny::reactiveVal(NULL)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_selected_sites = rv_sites
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      all_stats <- param_outliers()
+
+      rv_sites(unique(m$site)[1])
+      filtered_stats <- param_outliers()
+
+      expect_true(sum(filtered_stats$n_outlier_sites) <= sum(all_stats$n_outlier_sites))
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server param list handles text filter and alpha sort", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE, param_filter = "no_match_token")
+      ui_none <- output$param_list
+      expect_true(any(grepl("No matching fields", as.character(ui_none), fixed = TRUE)))
+
+      session$setInputs(param_filter = "", param_sort = "alpha")
+      ui_alpha <- output$param_list
+      expect_false(is.null(ui_alpha))
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server caps plot sites to 24", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      sel_id <- lookup$display_id[1]
+      session$setInputs(selected_param = sel_id)
+
+      scores <- rctv_scores_regular()
+      shiny::req(nrow(scores) > 0)
+
+      row_idx <- rep(seq_len(min(nrow(scores), 10L)), length.out = 30L)
+      session$setInputs(score_table_regular_rows_current = row_idx)
+
+      sites <- rctv_plot_sites()
+      expect_equal(length(sites), 24)
     }
   )
 })

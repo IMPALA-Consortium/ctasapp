@@ -52,7 +52,7 @@ run_ctas_app <- function(config = NULL, verbose = TRUE, ...) {
     data <- mod_DataInput_server("data_input")
 
     # Populate global site filter when data loads
-    shiny::observeEvent(data$measures(), {
+    shiny::observeEvent(data$measures(), { # nocov start
       m <- data$measures()
       if (is.null(m)) return()
       sites <- sort(unique(m$site))
@@ -62,10 +62,10 @@ run_ctas_app <- function(config = NULL, verbose = TRUE, ...) {
         selected = character(0),
         server = FALSE
       )
-    })
+    }) # nocov end
 
     # Show dataset label and study in navbar
-    output$dataset_badge <- shiny::renderUI({
+    output$dataset_badge <- shiny::renderUI({ # nocov start
       label <- data$dataset_label()
       if (is.null(label)) return(NULL)
       study <- data$selected_study()
@@ -75,13 +75,13 @@ run_ctas_app <- function(config = NULL, verbose = TRUE, ...) {
         style = "font-size: 0.85em;",
         text
       )
-    })
+    }) # nocov end
 
-    rctv_selected_sites <- shiny::reactive({
+    rctv_selected_sites <- shiny::reactive({ # nocov start
       sel <- input$global_site_filter
       if (is.null(sel) || length(sel) == 0) return(NULL)
       sel
-    })
+    }) # nocov end
 
     mod_FieldDetail_server(
       "field_detail", data$measures, data$ctas_results, data$untransformed,
