@@ -4,12 +4,15 @@
 \alias{run_ctas_app}
 \title{Run the ctas Shiny App}
 \usage{
-run_ctas_app(config = NULL, ...)
+run_ctas_app(config = NULL, verbose = TRUE, ...)
 }
 \arguments{
 \item{config}{Path to a YAML configuration file. When \code{NULL} (default),
 uses the config shipped with the package. See \code{\link[=load_config]{load_config()}} for the
 expected structure.}
+
+\item{verbose}{Logical. When \code{TRUE} (default), progress and diagnostic
+messages are printed to the console. Set to \code{FALSE} to run silently.}
 
 \item{...}{Additional arguments passed to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.}
 }

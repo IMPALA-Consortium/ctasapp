@@ -9,7 +9,8 @@ prepare_ts_data_multi(
   parameter_ids,
   thresh,
   untransformed = NULL,
-  plot_type = "numeric"
+  plot_type = "numeric",
+  sites = NULL
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ original_category. Pass NULL (default) to show transformed result only.}
 
 \item{plot_type}{Character scalar: "numeric", "categorical", or "bar".
 Controls column selection and deduplication.}
+
+\item{sites}{Optional character vector of site names. When provided, these
+sites are used directly instead of computing outlier sites from \code{thresh}.}
 }
 \value{
 A data frame sorted by site, subject_id, timepoint_rank.

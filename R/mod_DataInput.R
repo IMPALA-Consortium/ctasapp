@@ -174,7 +174,8 @@ mod_DataInput_ui <- function(id) {
                          "Untransformed data (optional)",
                          accept = c(".csv", ".parquet", ".rda", ".rdata")),
         shiny::fileInput(ns("file_queries"), "Query data (optional)",
-                         accept = c(".csv", ".parquet", ".rda", ".rdata"))
+                         accept = c(".csv", ".parquet", ".rda", ".rdata")),
+        shiny::uiOutput(ns("study_selector"))
       ),
       shiny::actionButton(
         ns("load_data"),
@@ -191,8 +192,11 @@ mod_DataInput_ui <- function(id) {
 #' Data Input Module - Server
 #'
 #' Returns a named list of reactives: `measures`, `ctas_results`,
-#' `untransformed`, `queries`, `dataset_label`, and `studies`.
-#' No study filtering is applied here; the Fields module owns filtering.
+#' `untransformed`, `queries`, `dataset_label`, `studies`, and
+#' `selected_study`. When the uploaded results file contains a `study`
+#' column with more than one unique value, a study selector is shown on
+#' the Data tab and the chosen study is used to filter both the results
+#' and input data frames before validation/reconstruction.
 #'
 #' @param id Module namespace ID.
 #' @return Named list of reactive expressions.
@@ -206,37 +210,70 @@ mod_DataInput_server <- function(id) {
     rv_queries <- shiny::reactiveVal(NULL)
     rv_dataset_label <- shiny::reactiveVal(NULL)
     rv_studies <- shiny::reactiveVal(NULL)
+    rv_available_studies <- shiny::reactiveVal(NULL)
+    rv_selected_study <- shiny::reactiveVal(NULL)
+
+    # -- Detect studies from results file when uploaded -----------------------
+    shiny::observeEvent(input$file_results, { # nocov start
+      res_file <- input$file_results
+      if (is.null(res_file)) return()
+      results_df <- tryCatch(
+        read_upload_file(res_file$datapath, res_file$name),
+        error = function(e) { NULL }
+      )
+      if (is.null(results_df) || !"study" %in% names(results_df)) {
+        rv_available_studies(NULL)
+        return()
+      }
+      studies <- sort(unique(results_df$study))
+      if (length(studies) > 1) {
+        rv_available_studies(studies)
+      } else {
+        rv_available_studies(NULL)
+      }
+    }) # nocov end
+
+    output$study_selector <- shiny::renderUI({ # nocov start
+      studies <- rv_available_studies()
+      if (is.null(studies)) return(NULL)
+      shiny::selectInput(
+        session$ns("upload_study"),
+        "Select Study",
+        choices = stats::setNames(studies, studies),
+        selected = studies[1]
+      )
+    }) # nocov end
 
     shiny::observeEvent(input$load_data, {
-      message("[DEBUG] === Load Data button clicked ===")
+      ctas_log("=== Load Data button clicked ===")
       source <- input$data_source %||% "upload"
-      message("[DEBUG] data_source = '", source, "'")
+      ctas_log("data_source = '", source, "'")
 
       shiny::withProgress(message = "Loading data...", value = 0, {
 
       if (source == "ctas") {
         shiny::setProgress(0.1, detail = "Loading ctas sample")
-        message("[DEBUG] Loading ctas sample data...")
+        ctas_log("Loading ctas sample data...")
         ctas_data <- ctasapp::sample_ctas_data
         ctas_results <- ctasapp::sample_ctas_results
         label <- "ctas sample"
-        message("[DEBUG] ctas sample loaded OK")
+        ctas_log("ctas sample loaded OK")
       } else if (source == "sdtm") {
         shiny::setProgress(0.1, detail = "Loading SDTM sample")
-        message("[DEBUG] Loading SDTM sample data...")
+        ctas_log("Loading SDTM sample data...")
         ctas_data <- ctasapp::sample_sdtm_data
         ctas_results <- ctasapp::sample_sdtm_results
         label <- "SDTM sample"
-        message("[DEBUG] SDTM sample loaded OK")
+        ctas_log("SDTM sample loaded OK")
       } else { # nocov start
-        message("[DEBUG] Upload mode: reading uploaded files...")
+        ctas_log("Upload mode: reading uploaded files...")
         res_file <- input$file_results
         inp_file <- input$file_input
-        message("[DEBUG] res_file is.null=", is.null(res_file),
+        ctas_log("res_file is.null=", is.null(res_file),
                 ", inp_file is.null=", is.null(inp_file))
 
         if (is.null(res_file) || is.null(inp_file)) {
-          message("[DEBUG] Missing mandatory file(s), aborting")
+          ctas_log("Missing mandatory file(s), aborting")
           shiny::showNotification(
             "Please upload both a Results file and an Input file.",
             type = "error", duration = 5
@@ -245,13 +282,13 @@ mod_DataInput_server <- function(id) {
         }
 
         shiny::setProgress(0.1, detail = "Reading uploaded files")
-        message("[DEBUG] Reading results file: ", res_file$name,
+        ctas_log("Reading results file: ", res_file$name,
                 " (", res_file$datapath, ")")
         results_df <- tryCatch(
           read_upload_file(res_file$datapath, res_file$name),
           error = function(e) { e }
         )
-        message("[DEBUG] Reading input file: ", inp_file$name,
+        ctas_log("Reading input file: ", inp_file$name,
                 " (", inp_file$datapath, ")")
         input_df <- tryCatch(
           read_upload_file(inp_file$datapath, inp_file$name),
@@ -259,7 +296,7 @@ mod_DataInput_server <- function(id) {
         )
 
         if (inherits(results_df, "error")) {
-          message("[DEBUG] ERROR reading results: ",
+          ctas_log("ERROR reading results: ",
                   conditionMessage(results_df))
           shiny::showNotification(
             paste0("Could not read results file '", res_file$name,
@@ -268,12 +305,12 @@ mod_DataInput_server <- function(id) {
           )
           return()
         }
-        message("[DEBUG] results_df: ", nrow(results_df), " rows, ",
+        ctas_log("results_df: ", nrow(results_df), " rows, ",
                 ncol(results_df), " cols: ",
                 paste(names(results_df), collapse = ", "))
 
         if (inherits(input_df, "error")) {
-          message("[DEBUG] ERROR reading input: ",
+          ctas_log("ERROR reading input: ",
                   conditionMessage(input_df))
           shiny::showNotification(
             paste0("Could not read input file '", inp_file$name,
@@ -282,21 +319,39 @@ mod_DataInput_server <- function(id) {
           )
           return()
         }
-        message("[DEBUG] input_df: ", nrow(input_df), " rows, ",
+        ctas_log("input_df: ", nrow(input_df), " rows, ",
                 ncol(input_df), " cols: ",
                 paste(names(input_df), collapse = ", "))
 
+        # -- Filter to selected study when multi-study data -------------------
+        upload_study <- input$upload_study
+        if (!is.null(upload_study) && !is.null(rv_available_studies())) {
+          ctas_log("Filtering to study: ", upload_study)
+          if ("study" %in% names(results_df)) {
+            results_df <- results_df[results_df$study == upload_study, ]
+          }
+          if ("study" %in% names(input_df)) {
+            input_df <- input_df[input_df$study == upload_study, ]
+          }
+          rv_selected_study(upload_study)
+          ctas_log("After study filter: results_df ",
+                  nrow(results_df), " rows, input_df ",
+                  nrow(input_df), " rows")
+        } else {
+          rv_selected_study(NULL)
+        }
+
         shiny::setProgress(0.2, detail = "Validating files")
-        message("[DEBUG] Validating uploaded files...")
+        ctas_log("Validating uploaded files...")
         errs_res <- validate_upload_results(results_df)
         errs_inp <- validate_upload_input(input_df)
         all_errs <- c(errs_res, errs_inp)
-        message("[DEBUG] Validation errors so far: ", length(all_errs))
+        ctas_log("Validation errors so far: ", length(all_errs))
 
         ut_file <- input$file_untransformed
         untransformed_df <- NULL
         if (!is.null(ut_file)) {
-          message("[DEBUG] Reading untransformed file: ", ut_file$name)
+          ctas_log("Reading untransformed file: ", ut_file$name)
           untransformed_df <- tryCatch(
             read_upload_file(ut_file$datapath, ut_file$name),
             error = function(e) { NULL }
@@ -310,7 +365,7 @@ mod_DataInput_server <- function(id) {
         q_file <- input$file_queries
         queries_df <- NULL
         if (!is.null(q_file)) {
-          message("[DEBUG] Reading queries file: ", q_file$name)
+          ctas_log("Reading queries file: ", q_file$name)
           queries_df <- tryCatch(
             read_upload_file(q_file$datapath, q_file$name),
             error = function(e) { NULL }
@@ -322,7 +377,7 @@ mod_DataInput_server <- function(id) {
         }
 
         if (length(all_errs) > 0) {
-          message("[DEBUG] Validation failed: ",
+          ctas_log("Validation failed: ",
                   paste(all_errs, collapse = "; "))
           shiny::showNotification(
             htmltools::HTML(paste(all_errs, collapse = "<br>")),
@@ -330,7 +385,7 @@ mod_DataInput_server <- function(id) {
           )
           return()
         }
-        message("[DEBUG] Validation passed")
+        ctas_log("Validation passed")
 
         # Filter out ratio_missing entries paired with categorical/bar params
         # or where ratio_missing is the only type in the category_2 group
@@ -359,7 +414,7 @@ mod_DataInput_server <- function(id) {
             ]
           )
           if (length(rm_ids) > 0) {
-            message("[DEBUG] Removing ", length(rm_ids),
+            ctas_log("Removing ", length(rm_ids),
                     " ratio_missing parameter_id(s) paired with categorical")
             input_df <- input_df[!input_df$parameter_id %in% rm_ids, ]
             results_df <- results_df[!results_df$parameter_id %in% rm_ids, ]
@@ -373,13 +428,13 @@ mod_DataInput_server <- function(id) {
         shiny::setProgress(0.3, detail = paste0(
           "Aggregating results (", nrow(results_df), " rows)..."
         ))
-        message("[DEBUG] Aggregating results...")
+        ctas_log("Aggregating results...")
         results_df <- tryCatch(
           aggregate_results(results_df),
           error = function(e) { e }
         )
         if (inherits(results_df, "error")) {
-          message("[DEBUG] ERROR in aggregate_results: ",
+          ctas_log("ERROR in aggregate_results: ",
                   conditionMessage(results_df))
           shiny::showNotification(
             paste0("Error aggregating results: ",
@@ -388,12 +443,12 @@ mod_DataInput_server <- function(id) {
           )
           return()
         }
-        message("[DEBUG] Aggregated results: ", nrow(results_df), " rows")
+        ctas_log("Aggregated results: ", nrow(results_df), " rows")
 
         shiny::setProgress(0.6, detail = "Cross-validating files")
         cross_warns <- validate_upload_crossfile(input_df, results_df)
         if (length(cross_warns) > 0) {
-          message("[DEBUG] Cross-file warnings: ",
+          ctas_log("Cross-file warnings: ",
                   paste(cross_warns, collapse = "; "))
           shiny::showNotification(
             htmltools::HTML(paste("Warnings:", paste(cross_warns,
@@ -403,7 +458,7 @@ mod_DataInput_server <- function(id) {
         }
 
         shiny::setProgress(0.7, detail = "Reconstructing data structures")
-        message("[DEBUG] Reconstructing from upload...")
+        ctas_log("Reconstructing from upload...")
         reconstructed <- tryCatch(
           reconstruct_from_upload(
             input_df, results_df, untransformed_df, queries_df
@@ -411,7 +466,7 @@ mod_DataInput_server <- function(id) {
           error = function(e) { e }
         )
         if (inherits(reconstructed, "error")) {
-          message("[DEBUG] ERROR in reconstruct_from_upload: ",
+          ctas_log("ERROR in reconstruct_from_upload: ",
                   conditionMessage(reconstructed))
           shiny::showNotification(
             paste0("Error processing uploaded data: ",
@@ -423,17 +478,17 @@ mod_DataInput_server <- function(id) {
         ctas_data <- reconstructed$ctas_data
         ctas_results <- reconstructed$ctas_results
         label <- tools::file_path_sans_ext(inp_file$name)
-        message("[DEBUG] Reconstruction OK, label='", label, "'")
+        ctas_log("Reconstruction OK, label='", label, "'")
       } # nocov end
 
       shiny::setProgress(0.8, detail = "Preparing measures")
-      message("[DEBUG] Preparing measures...")
+      ctas_log("Preparing measures...")
       measures <- tryCatch( # nocov start
         prepare_measures(ctas_data, ctas_results),
         error = function(e) { e }
       )
       if (inherits(measures, "error")) {
-        message("[DEBUG] ERROR in prepare_measures: ",
+        ctas_log("ERROR in prepare_measures: ",
                 conditionMessage(measures))
         shiny::showNotification(
           paste0("Error preparing measures: ",
@@ -442,7 +497,7 @@ mod_DataInput_server <- function(id) {
         )
         return()
       } # nocov end
-      message("[DEBUG] measures: ", nrow(measures), " rows, ",
+      ctas_log("measures: ", nrow(measures), " rows, ",
               ncol(measures), " cols")
 
       shiny::setProgress(0.95, detail = "Finalizing")
@@ -460,7 +515,7 @@ mod_DataInput_server <- function(id) {
       rv_studies(if (!is.null(studies) && length(studies) > 1) studies else NULL)
 
       shiny::setProgress(1, detail = "Done")
-      message("[DEBUG] === Load complete: '", label, "' with ",
+      ctas_log("=== Load complete: '", label, "' with ",
               nrow(measures), " observations ===")
       shiny::showNotification(
         paste0("Loaded '", label, "': ", nrow(measures), " observations"),
@@ -497,7 +552,8 @@ mod_DataInput_server <- function(id) {
       untransformed = rv_untransformed,
       queries = rv_queries,
       dataset_label = rv_dataset_label,
-      studies = rv_studies
+      studies = rv_studies,
+      selected_study = rv_selected_study
     )
   })
 }
