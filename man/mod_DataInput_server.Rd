@@ -14,6 +14,9 @@ Named list of reactive expressions.
 }
 \description{
 Returns a named list of reactives: \code{measures}, \code{ctas_results},
-\code{untransformed}, \code{queries}, \code{dataset_label}, and \code{studies}.
-No study filtering is applied here; the Fields module owns filtering.
+\code{untransformed}, \code{queries}, \code{dataset_label}, \code{studies}, and
+\code{selected_study}. When the uploaded results file contains a \code{study}
+column with more than one unique value, a study selector is shown on
+the Data tab and the chosen study is used to filter both the results
+and input data frames before validation/reconstruction.
 }

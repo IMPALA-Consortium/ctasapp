@@ -65,7 +65,8 @@ run_ctas_app <- function(config = NULL, ...) {
     output$dataset_badge <- shiny::renderUI({
       label <- data$dataset_label()
       if (is.null(label)) return(NULL)
-      text <- label
+      study <- data$selected_study()
+      text <- if (!is.null(study)) paste(label, study, sep = " \u00B7 ") else label
       shiny::tags$span(
         class = "badge bg-info text-white",
         style = "font-size: 0.85em;",
