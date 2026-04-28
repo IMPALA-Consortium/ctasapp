@@ -5,9 +5,12 @@
 #' @param config Path to a YAML configuration file. When `NULL` (default),
 #'   uses the config shipped with the package. See [load_config()] for the
 #'   expected structure.
+#' @param verbose Logical. When `TRUE` (default), progress and diagnostic
+#'   messages are printed to the console. Set to `FALSE` to run silently.
 #' @param ... Additional arguments passed to [shiny::shinyApp()].
 #' @export
-run_ctas_app <- function(config = NULL, ...) {
+run_ctas_app <- function(config = NULL, verbose = TRUE, ...) {
+  options(ctasapp.verbose = verbose)
   cfg <- load_config(config)
   apply_config(cfg)
 

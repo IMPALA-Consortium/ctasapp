@@ -1,5 +1,19 @@
 # Package-level environment for runtime configuration (mutable state)
 .cfg_env <- new.env(parent = emptyenv())
+
+#' Conditional app logger
+#'
+#' Prints a message to the console when the `ctasapp.verbose` option is `TRUE`
+#' (the default). Set `options(ctasapp.verbose = FALSE)` or pass
+#' `verbose = FALSE` to [run_ctas_app()] to silence all log output.
+#'
+#' @param ... Passed to [base::message()].
+#' @keywords internal
+ctas_log <- function(...) {
+  if (isTRUE(getOption("ctasapp.verbose", TRUE))) {
+    message("[ctasapp] ", ...)
+  }
+}
 .cfg_env$query_no_change <- "#a380e9"
 .cfg_env$query_data_change <- "#2790e0"
 .cfg_env$default_features <- NULL

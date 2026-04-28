@@ -40,28 +40,31 @@ mod_FieldDetail_ui <- function(id) {
         shiny::uiOutput(ns("param_list"))
       )
     ),
-    shiny::h4(shiny::textOutput(ns("plot_title"))),
-    shiny::h5(shiny::textOutput(ns("plot_subtitle"))),
-    bslib::navset_pill(
-      bslib::nav_panel("Regular Scores", DT::dataTableOutput(ns("score_table_regular"))),
-      bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
-    ),
-    shiny::hr(),
-    shiny::fluidRow(
-      shiny::column(10, shiny::plotOutput(ns("ts_plot"), height = "700px")),
-      shiny::column(
-        2,
-        style = "max-height:700px;overflow-y:auto;",
-        shiny::uiOutput(ns("visit_sorter"))
+    shiny::tags$div(
+      style = "height:calc(100vh - 56px);overflow-y:auto;overflow-x:hidden;padding-right:4px;",
+      shiny::h4(shiny::textOutput(ns("plot_title"))),
+      shiny::h5(shiny::textOutput(ns("plot_subtitle"))),
+      bslib::navset_pill(
+        bslib::nav_panel("Regular Scores", DT::dataTableOutput(ns("score_table_regular"))),
+        bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
+      ),
+      shiny::hr(),
+      shiny::fluidRow(
+        shiny::column(10, shiny::plotOutput(ns("ts_plot"), height = "700px")),
+        shiny::column(
+          2,
+          style = "max-height:700px;overflow-y:auto;",
+          shiny::uiOutput(ns("visit_sorter"))
+        )
+      ),
+      shiny::hr(),
+      shiny::h5("Data Tables (Outlier Sites)"),
+      bslib::navset_pill(
+        id = ns("data_tab"),
+        selected = "Queries",
+        bslib::nav_panel("Queries", DT::dataTableOutput(ns("query_table"))),
+        bslib::nav_panel("Source Data", DT::dataTableOutput(ns("ts_data_table")))
       )
-    ),
-    shiny::hr(),
-    shiny::h5("Data Tables (Outlier Sites)"),
-    bslib::navset_pill(
-      id = ns("data_tab"),
-      selected = "Queries",
-      bslib::nav_panel("Queries", DT::dataTableOutput(ns("query_table"))),
-      bslib::nav_panel("Source Data", DT::dataTableOutput(ns("ts_data_table")))
     )
   )
 }
