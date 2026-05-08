@@ -194,6 +194,25 @@ test_that("prepare_ts_data_multi preserves row count with untransformed", {
   expect_equal(nrow(td_with), nrow(td_without))
 })
 
+test_that("prepare_ts_data_multi passes through extra untransformed columns", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+  ut$comment <- paste0("note-", seq_len(nrow(ut)))
+  ut$flag <- rep(c(TRUE, FALSE), length.out = nrow(ut))
+
+  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT", m$parameter_id)])
+  td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut)
+
+  expect_true("comment" %in% names(td))
+  expect_true("flag" %in% names(td))
+
+  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  td_cat <- prepare_ts_data_multi(m, cat_params, thresh = 0,
+                                  untransformed = ut, plot_type = "categorical")
+  expect_true("comment" %in% names(td_cat))
+  expect_true("flag" %in% names(td_cat))
+})
+
 test_that("recompute_max_score with NULL features returns same max_score", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)
   m2 <- recompute_max_score(m, sample_ctas_results, features = NULL)

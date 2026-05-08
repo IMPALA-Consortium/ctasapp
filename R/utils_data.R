@@ -235,14 +235,18 @@ prepare_score_table_multi <- function(ctas_results, parameter_ids,
 #' Like [prepare_ts_data()] but accepts a vector of parameter IDs. When
 #' `untransformed` is supplied (non-NULL), joins in the original pre-transformation
 #' values (original_value, lower, upper, original_category) keyed on
-#' `subject_id + parameter_category_2 + timepoint_1_name`.
+#' `subject_id + parameter_category_2 + timepoint_1_name`. Any additional
+#' columns present in `untransformed` (beyond the join keys and the standard
+#' fields) are passed through to the output so they appear in the Source
+#' Data table.
 #'
 #' @param measures Data frame as returned by [prepare_measures()].
 #' @param parameter_ids Character vector of parameter IDs.
 #' @param thresh Numeric threshold for outlier flagging.
 #' @param untransformed Optional data frame with columns subject_id,
 #'   parameter_category_2, timepoint_1_name, original_value, lower, upper,
-#'   original_category. Pass NULL (default) to show transformed result only.
+#'   original_category, plus any extra user columns to pass through. Pass
+#'   NULL (default) to show transformed result only.
 #' @param plot_type Character scalar: "numeric", "categorical", or "bar".
 #'   Controls column selection and deduplication.
 #' @param sites Optional character vector of site names. When provided, these
@@ -282,7 +286,12 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
 
   if (!is.null(untransformed) && nrow(filtered) > 0) {
     display_cats <- unique(filtered$parameter_category_2)
-    ut_sub <- untransformed |>
+    join_keys <- c("subject_id", "parameter_category_2", "timepoint_1_name")
+    # Only carry through columns not already present in `filtered` to avoid
+    # `.x`/`.y` suffix collisions. This preserves any extra user columns
+    # uploaded alongside the standard untransformed fields.
+    ut_keep <- setdiff(names(untransformed), setdiff(names(filtered), join_keys))
+    ut_sub <- untransformed[, ut_keep, drop = FALSE] |>
       dplyr::filter(.data$parameter_category_2 %in% .env$display_cats) |>
       dplyr::distinct(
         .data$subject_id, .data$parameter_category_2,
@@ -290,20 +299,20 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
       )
 
     filtered <- filtered |>
-      dplyr::left_join(
-        ut_sub,
-        by = c("subject_id", "parameter_category_2", "timepoint_1_name")
-      )
+      dplyr::left_join(ut_sub, by = join_keys)
 
-    ut_cols <- c("original_value", "lower", "upper", "original_category")
-    ut_cols <- intersect(ut_cols, names(filtered))
+    standard_ut_cols <- c("original_value", "lower", "upper", "original_category")
+    extra_ut_cols <- setdiff(ut_keep, c(join_keys, standard_ut_cols))
+    extra_ut_cols <- intersect(extra_ut_cols, names(filtered))
+    ut_cols <- intersect(standard_ut_cols, names(filtered))
 
     if (is_cat) {
       result <- filtered |>
         dplyr::select(
           "site", "subject_id", "parameter_category_2",
           "timepoint_rank", "timepoint_1_name",
-          dplyr::any_of("original_category")
+          dplyr::any_of("original_category"),
+          dplyr::any_of(extra_ut_cols)
         ) |>
         dplyr::distinct()
     } else {
@@ -312,7 +321,8 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
           "site", "subject_id", "parameter_category_2",
           "timepoint_rank", "timepoint_1_name",
           dplyr::any_of(ut_cols),
-          "result", "parameter_id", "parameter_name", "max_score"
+          "result", "parameter_id", "parameter_name", "max_score",
+          dplyr::any_of(extra_ut_cols)
         ) |>
         dplyr::mutate(
           dplyr::across(

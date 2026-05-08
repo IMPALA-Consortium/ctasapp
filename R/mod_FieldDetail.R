@@ -797,8 +797,16 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         "No outlier site data to display (no sites exceed the threshold for this parameter)."
       ))
 
-      # Hide parameter_id and parameter_name by default for numeric
-      hide_cols <- which(names(ts_data) %in% c("parameter_id", "parameter_name")) - 1L
+      # Hide parameter_id, parameter_name, and any extra pass-through columns
+      # from the untransformed upload by default; users can toggle them on
+      # via the colvis button.
+      default_visible <- c(
+        "site", "subject_id", "parameter_category_2",
+        "timepoint_rank", "timepoint_1_name",
+        "original_value", "lower", "upper", "original_category",
+        "result", "max_score"
+      )
+      hide_cols <- which(!names(ts_data) %in% default_visible) - 1L
 
       DT::datatable(
         ts_data,
