@@ -160,3 +160,62 @@ test_that("generated untransformed and queries CSVs validate", {
   }
   expect_length(validate_upload_queries(q_df), 0)
 })
+
+
+# -- Embedded data set ---------------------------------------------------------
+
+setup_embedded_fixtures <- function() {
+  tmp_dir <- tempfile("embedded_")
+  dir.create(tmp_dir)
+  generate_sample_csv(tmp_dir)
+  cfg <- default_config()
+  cfg$embedded$results <- file.path(tmp_dir, "results.csv")
+  cfg$embedded$input <- file.path(tmp_dir, "input.csv")
+  cfg$embedded$untransformed <- file.path(tmp_dir, "untransformed.csv")
+  cfg$embedded$queries <- file.path(tmp_dir, "queries.csv")
+  apply_config(cfg)
+  tmp_dir
+}
+
+test_that("mod_DataInput_server injects 'Embedded data set' option", {
+  on.exit(apply_config(default_config()), add = TRUE)
+  tmp_dir <- setup_embedded_fixtures()
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  shiny::testServer(mod_DataInput_server, {
+    session$flushReact()
+    expect_true(embedded_files_configured())
+    # The inject observer ran during flushReact; option is added.
+    # Then load via embedded source:
+    session$setInputs(data_source = "embedded", load_data = 1)
+    returned <- session$getReturned()
+    m <- returned$measures()
+    expect_s3_class(m, "data.frame")
+    expect_true(nrow(m) > 0)
+  })
+})
+
+test_that("mod_DataInput_server embedded mode errors when files missing", {
+  on.exit(apply_config(default_config()), add = TRUE)
+  cfg <- default_config()
+  cfg$embedded$results <- "/nonexistent/results.csv"
+  cfg$embedded$input <- "/nonexistent/input.csv"
+  apply_config(cfg)
+
+  shiny::testServer(mod_DataInput_server, {
+    session$setInputs(data_source = "embedded", load_data = 1)
+    returned <- session$getReturned()
+    expect_null(returned$measures())
+  })
+})
+
+test_that("embedded_panel renders existence markers", {
+  on.exit(apply_config(default_config()), add = TRUE)
+  tmp_dir <- setup_embedded_fixtures()
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  shiny::testServer(mod_DataInput_server, {
+    panel <- output$embedded_panel
+    expect_true(inherits(panel, "list") || is.character(panel$html))
+  })
+})

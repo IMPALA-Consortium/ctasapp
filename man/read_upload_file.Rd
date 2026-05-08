@@ -15,7 +15,7 @@ read_upload_file(path, name)
 A data frame, or stops with an informative error.
 }
 \description{
-Dispatches on file extension: \code{.csv} uses \code{\link[utils:read.table]{utils::read.csv()}},
+Dispatches on file extension: \code{.csv} uses \code{\link[utils:read.csv]{utils::read.csv()}},
 \code{.parquet} uses \code{\link[arrow:read_parquet]{arrow::read_parquet()}}, \code{.rda}/\code{.rdata} loads the
 first data frame found in the file.
 }

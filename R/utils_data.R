@@ -286,17 +286,22 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
 
   if (!is.null(untransformed) && nrow(filtered) > 0) {
     display_cats <- unique(filtered$parameter_category_2)
+    # Include `study` in the join keys when available in both frames so that
+    # the same subject_id reused across studies does not collide on the
+    # left_join (and the subsequent distinct() does not arbitrarily drop the
+    # correct study's row).
     join_keys <- c("subject_id", "parameter_category_2", "timepoint_1_name")
+    if ("study" %in% names(filtered) && "study" %in% names(untransformed)) {
+      join_keys <- c("study", join_keys)
+    }
     # Only carry through columns not already present in `filtered` to avoid
     # `.x`/`.y` suffix collisions. This preserves any extra user columns
     # uploaded alongside the standard untransformed fields.
     ut_keep <- setdiff(names(untransformed), setdiff(names(filtered), join_keys))
     ut_sub <- untransformed[, ut_keep, drop = FALSE] |>
       dplyr::filter(.data$parameter_category_2 %in% .env$display_cats) |>
-      dplyr::distinct(
-        .data$subject_id, .data$parameter_category_2,
-        .data$timepoint_1_name, .keep_all = TRUE
-      )
+      dplyr::distinct(dplyr::across(dplyr::all_of(join_keys)),
+                      .keep_all = TRUE)
 
     filtered <- filtered |>
       dplyr::left_join(ut_sub, by = join_keys)

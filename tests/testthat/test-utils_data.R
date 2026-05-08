@@ -213,6 +213,33 @@ test_that("prepare_ts_data_multi passes through extra untransformed columns", {
   expect_true("flag" %in% names(td_cat))
 })
 
+test_that("prepare_ts_data_multi joins on study when subject_id reused across studies", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  ut <- sample_sdtm_data$untransformed
+  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT", m$parameter_id)])
+
+  # Pick one real (subject_id, parameter_category_2, timepoint_1_name) row and
+  # synthesise a second study sharing the same subject_id but a different
+  # extra column value. Without `study` in the join keys, distinct() would
+  # arbitrarily collapse the two and the wrong `field_extra` could land on
+  # the row.
+  ut$study <- "STUDY_A"
+  m$study <- "STUDY_A"
+  ut$field_extra <- "right"
+
+  ghost <- ut[1, , drop = FALSE]
+  ghost$study <- "STUDY_B"
+  ghost$field_extra <- "wrong"
+  ut2 <- rbind(ut, ghost)
+
+  td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut2)
+
+  expect_true("field_extra" %in% names(td))
+  # Every row belongs to STUDY_A's measures; none should pick up the ghost.
+  expect_true(all(td$field_extra == "right" | is.na(td$field_extra)))
+  expect_false(any(td$field_extra == "wrong", na.rm = TRUE))
+})
+
 test_that("recompute_max_score with NULL features returns same max_score", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)
   m2 <- recompute_max_score(m, sample_ctas_results, features = NULL)

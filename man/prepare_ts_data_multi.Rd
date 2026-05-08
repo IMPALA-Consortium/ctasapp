@@ -22,7 +22,8 @@ prepare_ts_data_multi(
 
 \item{untransformed}{Optional data frame with columns subject_id,
 parameter_category_2, timepoint_1_name, original_value, lower, upper,
-original_category. Pass NULL (default) to show transformed result only.}
+original_category, plus any extra user columns to pass through. Pass
+NULL (default) to show transformed result only.}
 
 \item{plot_type}{Character scalar: "numeric", "categorical", or "bar".
 Controls column selection and deduplication.}
@@ -37,5 +38,8 @@ A data frame sorted by site, subject_id, timepoint_rank.
 Like \code{\link[=prepare_ts_data]{prepare_ts_data()}} but accepts a vector of parameter IDs. When
 \code{untransformed} is supplied (non-NULL), joins in the original pre-transformation
 values (original_value, lower, upper, original_category) keyed on
-\code{subject_id + parameter_category_2 + timepoint_1_name}.
+\code{subject_id + parameter_category_2 + timepoint_1_name}. Any additional
+columns present in \code{untransformed} (beyond the join keys and the standard
+fields) are passed through to the output so they appear in the Source
+Data table.
 }

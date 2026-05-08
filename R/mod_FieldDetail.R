@@ -349,6 +349,10 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       if (is.null(ut)) return(NULL)
       sel <- input$study_filter
       if (is.null(sel) || sel == "__all__") return(ut)
+      # Prefer filtering by `study` directly when the column is present, so
+      # that subject_ids reused across studies do not pull in rows from
+      # other studies.
+      if ("study" %in% names(ut)) return(ut[ut$study == sel, ])
       m <- flt_measures()
       study_subj <- unique(m$subject_id)
       ut[ut$subject_id %in% study_subj, ]

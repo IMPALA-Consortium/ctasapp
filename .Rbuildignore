@@ -16,3 +16,4 @@
 ^\.positai$
 ^\.claude$
 ^rsconnect$
+^ctasapp.yml$

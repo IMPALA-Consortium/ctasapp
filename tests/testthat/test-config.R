@@ -8,10 +8,13 @@ reset_config <- function() {
 test_that("default_config returns correct structure", {
   cfg <- default_config()
   expect_type(cfg, "list")
-  expect_named(cfg, c("colors", "icons", "features"))
+  expect_named(cfg, c("colors", "icons", "features", "embedded"))
   expect_named(cfg$colors, c("score_breaks", "plot", "table", "table_text",
                               "query_no_change", "query_data_change"))
   expect_named(cfg$icons, c("range_normalized", "numeric", "categorical", "bar"))
+  expect_named(cfg$embedded,
+               c("results", "input", "untransformed", "queries"))
+  expect_null(cfg$embedded$results)
   expect_length(cfg$colors$table, 5)
   expect_length(cfg$colors$plot, 5)
   expect_length(cfg$colors$score_breaks, 4)
@@ -26,7 +29,7 @@ test_that("default_config returns correct structure", {
 test_that("load_config with NULL path returns defaults when inst file missing", {
   cfg <- load_config(NULL)
   expect_type(cfg, "list")
-  expect_named(cfg, c("colors", "icons", "features"))
+  expect_named(cfg, c("colors", "icons", "features", "embedded"))
 })
 
 
@@ -269,4 +272,95 @@ test_that("load_config merges icon overrides", {
   expect_equal(cfg$icons$range_normalized, "flask")
   expect_equal(cfg$icons$categorical, "water")
   unlink(tmp)
+})
+
+
+# -- embedded block + discovery chain -----------------------------------------
+
+test_that("load_config parses embedded paths and resolves relative paths", {
+  tmp_dir <- tempfile("ctascfg_")
+  dir.create(tmp_dir)
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  cfg_path <- file.path(tmp_dir, "ctasapp.yml")
+  writeLines(c(
+    "embedded:",
+    "  results: data/results.parquet",
+    "  input: /tmp/abs_input.parquet",
+    "  untransformed: ~/ut.parquet"
+  ), cfg_path)
+
+  cfg <- load_config(cfg_path)
+  expect_match(cfg$embedded$results, "data/results\\.parquet$")
+  expect_true(file.path(normalizePath(tmp_dir), "data/results.parquet") ==
+              cfg$embedded$results)
+  expect_equal(cfg$embedded$input, "/tmp/abs_input.parquet")
+  expect_equal(cfg$embedded$untransformed, path.expand("~/ut.parquet"))
+  expect_null(cfg$embedded$queries)
+})
+
+test_that("load_config NULL discovers ctasapp.yml in working directory", {
+  tmp_dir <- tempfile("ctascfg_")
+  dir.create(tmp_dir)
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  writeLines(c(
+    "embedded:",
+    "  results: r.parquet",
+    "  input: i.parquet"
+  ), file.path(tmp_dir, "ctasapp.yml"))
+
+  cfg <- withr::with_dir(tmp_dir, load_config(NULL))
+  expect_match(cfg$embedded$results, "r\\.parquet$")
+  expect_match(cfg$embedded$input, "i\\.parquet$")
+})
+
+test_that("load_config NULL falls back to installed ctasapp.yml", {
+  tmp_dir <- tempfile("ctascfg_")
+  dir.create(tmp_dir)
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  cfg <- withr::with_dir(tmp_dir, load_config(NULL))
+  expect_equal(cfg$icons$range_normalized, "flask")
+})
+
+
+# -- get_embedded_paths() / embedded_files_configured() -----------------------
+
+test_that("get_embedded_paths returns NULL when feature unset", {
+  on.exit(reset_config(), add = TRUE)
+  apply_config(default_config())
+  expect_null(get_embedded_paths())
+  expect_false(embedded_files_configured())
+})
+
+test_that("get_embedded_paths returns NULL when env var was never set", {
+  on.exit(reset_config(), add = TRUE)
+  .cfg_env$embedded_paths <- NULL
+  expect_null(get_embedded_paths())
+  expect_false(embedded_files_configured())
+})
+
+test_that("get_embedded_paths returns paths once configured", {
+  on.exit(reset_config(), add = TRUE)
+  cfg <- default_config()
+  cfg$embedded$results <- "/tmp/r.parquet"
+  cfg$embedded$input <- "/tmp/i.parquet"
+  apply_config(cfg)
+
+  paths <- get_embedded_paths()
+  expect_type(paths, "list")
+  expect_equal(paths$results, "/tmp/r.parquet")
+  expect_equal(paths$input, "/tmp/i.parquet")
+  expect_null(paths$queries)
+  expect_true(embedded_files_configured())
+})
+
+
+# -- resolve_config_path() ----------------------------------------------------
+
+test_that("resolve_config_path expands ~ and resolves relative paths", {
+  expect_equal(resolve_config_path("~/foo", "/base"), path.expand("~/foo"))
+  expect_equal(resolve_config_path("/abs/x", "/base"), "/abs/x")
+  expect_equal(resolve_config_path("rel/x", "/base"), "/base/rel/x")
 })
