@@ -292,10 +292,20 @@ test_that("load_config parses embedded paths and resolves relative paths", {
 
   cfg <- load_config(cfg_path)
   expect_match(cfg$embedded$results, "data/results\\.parquet$")
-  expect_true(file.path(normalizePath(tmp_dir), "data/results.parquet") ==
-              cfg$embedded$results)
+  # Compare against the realised tmp_dir (normalizePath of an existing dir
+  # resolves macOS /var->/private/var symlinks and Windows 8.3 short names);
+  # then check the relative suffix separately. file.path uses '/' on all
+  # platforms.
+  real_tmp <- normalizePath(tmp_dir, winslash = "/")
+  expect_equal(
+    normalizePath(cfg$embedded$results, winslash = "/", mustWork = FALSE),
+    file.path(real_tmp, "data", "results.parquet")
+  )
   expect_equal(cfg$embedded$input, "/tmp/abs_input.parquet")
-  expect_equal(cfg$embedded$untransformed, path.expand("~/ut.parquet"))
+  expect_equal(
+    normalizePath(cfg$embedded$untransformed, winslash = "/", mustWork = FALSE),
+    normalizePath(path.expand("~/ut.parquet"), winslash = "/", mustWork = FALSE)
+  )
   expect_null(cfg$embedded$queries)
 })
 
