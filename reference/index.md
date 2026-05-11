@@ -18,12 +18,16 @@
   : Arrange visit names into clinically meaningful order
 - [`combine_ctas_input()`](https://IMPALA-Consortium.github.io/ctasapp/reference/combine_ctas_input.md)
   : Combine multiple ctas input lists
+- [`embedded_files_configured()`](https://IMPALA-Consortium.github.io/ctasapp/reference/embedded_files_configured.md)
+  : Check whether the embedded dataset feature is configured
 - [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md)
   : One-hot encode a categorical variable
 - [`generate_sample_csv()`](https://IMPALA-Consortium.github.io/ctasapp/reference/generate_sample_csv.md)
   : Generate sample upload CSV files
 - [`get_default_features()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_default_features.md)
   : Get default features from configuration
+- [`get_embedded_paths()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_embedded_paths.md)
+  : Get embedded dataset file paths from configuration
 - [`get_param_icons()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_param_icons.md)
   : Get parameter type icon mapping from configuration
 - [`get_plot_visit_levels()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_plot_visit_levels.md)

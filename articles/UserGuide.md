@@ -19,51 +19,52 @@ Anomaly Spotter) R package. The data pipeline is:
 
 Each `Input_*()` helper returns a list with four elements:
 
-| Element         | Description                                                                     |
-|:----------------|:--------------------------------------------------------------------------------|
-| `data`          | Transformed timeseries in ctas format (one row per subject/timepoint/parameter) |
-| `subjects`      | Subject metadata (`subject_id`, `site`, `country`, `region`)                    |
-| `parameters`    | Parameter metadata with plot-type classification                                |
-| `untransformed` | Pre-transformation values with reference ranges for display                     |
+| Element | Description |
+|:---|:---|
+| `data` | Transformed timeseries in ctas format (one row per subject/timepoint/parameter) |
+| `subjects` | Subject metadata (`subject_id`, `site`, `country`, `region`) |
+| `parameters` | Parameter metadata with plot-type classification |
+| `untransformed` | Pre-transformation values with reference ranges for display |
 
 ## Input data structure
 
 The **`data`** element has the following columns:
 
-| Column             | Type      | Description                                           |
-|:-------------------|:----------|:------------------------------------------------------|
-| `subject_id`       | character | Subject identifier (USUBJID)                          |
-| `parameter_id`     | character | Unique parameter key (e.g. `LB_NORM_ALT`, `VS_SYSBP`) |
-| `timepoint_rank`   | integer   | Positional visit index (1, 2, 3, …)                   |
-| `timepoint_1_name` | character | Visit label (e.g. “WEEK 2”, “SCREENING 1”)            |
-| `timepoint_2_name` | character | Secondary timepoint (usually NA)                      |
-| `baseline`         | logical   | Baseline flag (usually NA)                            |
-| `result`           | numeric   | Transformed value for ctas                            |
+| Column | Type | Description |
+|:---|:---|:---|
+| `subject_id` | character | Subject identifier (USUBJID) |
+| `parameter_id` | character | Unique parameter key (e.g. `LB_NORM_ALT`, `VS_SYSBP`) |
+| `timepoint_rank` | integer | Positional visit index (1, 2, 3, …) |
+| `timepoint_1_name` | character | Visit label (e.g. “WEEK 2”, “SCREENING 1”) |
+| `timepoint_2_name` | character | Secondary timepoint (usually NA) |
+| `baseline` | logical | Baseline flag (usually NA) |
+| `result` | numeric | Transformed value for ctas |
 
 The **`parameters`** element defines each parameter:
 
-| Column                 | Type      | Description                                       |
-|:-----------------------|:----------|:--------------------------------------------------|
-| `parameter_id`         | character | Matches `data$parameter_id`                       |
-| `parameter_name`       | character | Human-readable label                              |
-| `parameter_category_1` | character | Broad domain (e.g. “Labs”, “Vital Signs”)         |
+| Column | Type | Description |
+|:---|:---|:---|
+| `parameter_id` | character | Matches `data$parameter_id` |
+| `parameter_name` | character | Human-readable label |
+| `parameter_category_1` | character | Broad domain (e.g. “Labs”, “Vital Signs”) |
 | `parameter_category_2` | character | Field-level grouping key (e.g. “ALT”, “VS_SYSBP”) |
-| `parameter_category_3` | character | Plot type: see table below                        |
+| `parameter_category_3` | character | Plot type: see table below |
 
 The `parameter_category_3` value determines how the parameter is
 visualized:
 
-| `parameter_category_3` | Plot type                                        | Produced by                                                                                                                      |
-|:-----------------------|:-------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------|
-| `range_normalized`     | Faceted line plot (values in 0–1 range)          | `Input_Labs` via [`normalize_by_range()`](https://IMPALA-Consortium.github.io/ctasapp/reference/normalize_by_range.md)           |
-| `ratio_missing`        | Faceted line plot (paired with range_normalized) | `Input_Labs` via [`ratio_missing_over_time()`](https://IMPALA-Consortium.github.io/ctasapp/reference/ratio_missing_over_time.md) |
-| `numeric`              | Line plot (raw values)                           | `Input_VS`                                                                                                                       |
-| `categorical`          | Alluvial / stacked bar plot                      | `Input_RS` via [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md)             |
-| `bar`                  | Single-timepoint bar chart                       | `Input_BMI` via [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md)            |
+| `parameter_category_3` | Plot type | Produced by |
+|:---|:---|:---|
+| `range_normalized` | Faceted line plot (values in 0–1 range) | `Input_Labs` via [`normalize_by_range()`](https://IMPALA-Consortium.github.io/ctasapp/reference/normalize_by_range.md) |
+| `ratio_missing` | Faceted line plot (paired with range_normalized) | `Input_Labs` via [`ratio_missing_over_time()`](https://IMPALA-Consortium.github.io/ctasapp/reference/ratio_missing_over_time.md) |
+| `numeric` | Line plot (raw values) | `Input_VS` |
+| `categorical` | Alluvial / stacked bar plot | `Input_RS` via [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md) |
+| `bar` | Single-timepoint bar chart | `Input_BMI` via [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md) |
 
 ### Example: `Input_Labs` structure
 
 ``` r
+
 library(pharmaversesdtm)
 data("dm"); data("lb")
 
@@ -78,6 +79,7 @@ str(labs, max.level = 1)
      $ untransformed : tibble [46,164 x 6]
 
 ``` r
+
 head(labs$data[labs$data$parameter_id == "LB_NORM_ALT", ])
 ```
 
@@ -87,6 +89,7 @@ head(labs$data[labs$data$parameter_id == "LB_NORM_ALT", ])
       ...
 
 ``` r
+
 head(labs$parameters)
 ```
 
@@ -106,9 +109,12 @@ transforms lab values into a 0–1 scale using reference ranges. Values
 within the normal range fall between 0 and 1; below-range values are
 negative, above-range are greater than 1.
 
-$$\text{result} = \frac{\text{value} - \text{lower}}{\text{upper} - \text{lower}}$$
+``` math
+\text{result} = \frac{\text{value} - \text{lower}}{\text{upper} - \text{lower}}
+```
 
 ``` r
+
 value <- c(15, 30, 45, 60)
 lower <- rep(10, 4)
 upper <- rep(50, 4)
@@ -126,14 +132,17 @@ applies this to each lab parameter, producing rows with
 
 [`ratio_missing_over_time()`](https://IMPALA-Consortium.github.io/ctasapp/reference/ratio_missing_over_time.md)
 computes a running proportion of missing (NA) values per subject and
-parameter. At timepoint $k$, the value is:
+parameter. At timepoint $`k`$, the value is:
 
-$$\text{ratio}_{k} = \frac{\sum\limits_{i = 1}^{k}\mathbf{1}\left\lbrack \text{value}_{i} = \text{NA} \right\rbrack}{k}$$
+``` math
+\text{ratio}_k = \frac{\sum_{i=1}^{k} \mathbf{1}[\text{value}_i = \text{NA}]}{k}
+```
 
 A subject with no missing values always has ratio 0. One with all values
 missing has ratio 1.
 
 ``` r
+
 value <- c(10, NA, 30, NA, 50)
 subject_id <- rep("subj_1", 5)
 parameter_id <- rep("ALT", 5)
@@ -160,6 +169,7 @@ observation is expanded into one row per category level, with
 otherwise.
 
 ``` r
+
 responses <- c("CR", "PR", "SD", "PD", "CR", "SD")
 encoded <- encode_categorical(responses, prefix = "RS_OVRLRESP")
 head(encoded, 10)
@@ -192,6 +202,7 @@ timepoint per subject, `parameter_category_3 = "bar"` signals that the
 app should render a bar chart rather than an alluvial plot.
 
 ``` r
+
 library(pharmaversesdtm)
 data("dm"); data("vs")
 
@@ -214,6 +225,7 @@ passes vital-sign measurements through without transformation. The raw
 plots in the app.
 
 ``` r
+
 library(pharmaversesdtm)
 data("dm"); data("vs")
 
@@ -234,6 +246,7 @@ The package bundles pre-computed sample data (`sample_sdtm_data` and
 directly to generate all plot types.
 
 ``` r
+
 m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
 ```
 
@@ -244,6 +257,7 @@ The `ALT` parameter has both `LB_NORM_ALT` (range-normalized) and
 faceted pair.
 
 ``` r
+
 plot_timeseries(c("LB_NORM_ALT", "LB_MISS_ALT"), m, thresh = 1.3)
 ```
 
@@ -255,6 +269,7 @@ Systolic blood pressure (`VS_SYSBP`) uses raw numeric values without
 normalization.
 
 ``` r
+
 plot_timeseries("VS_SYSBP", m, thresh = 1.3)
 ```
 
@@ -266,6 +281,7 @@ Overall response (`RS_OVRLRESP`) categories are displayed as an alluvial
 plot showing transitions across visits.
 
 ``` r
+
 cat_ids <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
 plot_categorical(cat_ids, m, thresh = 1.3)
 ```
@@ -278,6 +294,7 @@ Screening weight categories are displayed as a bar chart since there is
 only one timepoint per subject.
 
 ``` r
+
 bar_ids <- unique(m$parameter_id[grepl("^VS_WEIGHT_CAT=", m$parameter_id)])
 plot_bar(bar_ids, m, thresh = 1.3)
 #> Warning: There were 32 warnings in `dplyr::mutate()`.
@@ -295,12 +312,12 @@ plot_bar(bar_ids, m, thresh = 1.3)
 The app supports uploading custom data via 2 mandatory and 2 optional
 flat files (CSV, Parquet, or RDA):
 
-| File          | Required | Description                                                                                                                 |
-|:--------------|:---------|:----------------------------------------------------------------------------------------------------------------------------|
-| Results       | Yes      | Pre-joined `site_scores` + `timeseries` from [`ctas::process_a_study()`](https://rdrr.io/pkg/ctas/man/process_a_study.html) |
-| Input         | Yes      | Pre-joined `data` + `subjects` + `parameters` (one row per observation)                                                     |
-| Untransformed | No       | Original values before transformation (for display in data tables)                                                          |
-| Queries       | No       | Clinical query records (overlaid as dots on plots)                                                                          |
+| File | Required | Description |
+|:---|:---|:---|
+| Results | Yes | Pre-joined `site_scores` + `timeseries` from [`ctas::process_a_study()`](https://rdrr.io/pkg/ctas/man/process_a_study.html) |
+| Input | Yes | Pre-joined `data` + `subjects` + `parameters` (one row per observation) |
+| Untransformed | No | Original values before transformation (for display in data tables) |
+| Queries | No | Clinical query records (overlaid as dots on plots) |
 
 See the collapsible “File format documentation” panel in the app’s Data
 tab for full column specifications. An optional `study` column in the
@@ -315,6 +332,7 @@ is useful for trying the upload feature or as a template for your own
 data:
 
 ``` r
+
 generate_sample_csv("~/my_upload_files")
 ```
 

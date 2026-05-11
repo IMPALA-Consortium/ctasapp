@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">ctasapp</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -326,7 +326,7 @@ producing rows with
 of missing (NA) values per subject and parameter. At timepoint
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>,
 the value is:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mtext mathvariant="normal">ratio</mtext><mi>k</mi></msub><mo>=</mo><mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>k</mi></munderover><mn>𝟏</mn><mrow><mo stretchy="true" form="prefix">[</mo><msub><mtext mathvariant="normal">value</mtext><mi>i</mi></msub><mo>=</mo><mtext mathvariant="normal">NA</mtext><mo stretchy="true" form="postfix">]</mo></mrow></mrow><mi>k</mi></mfrac></mrow><annotation encoding="application/x-tex">\text{ratio}_k = \frac{\sum_{i=1}^{k} \mathbf{1}[\text{value}_i = \text{NA}]}{k}</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mtext mathvariant="normal">ratio</mtext><mi>k</mi></msub><mo>=</mo><mfrac><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>k</mi></munderover><mn>𝟏</mn><mo stretchy="false" form="prefix">[</mo><msub><mtext mathvariant="normal">value</mtext><mi>i</mi></msub><mo>=</mo><mtext mathvariant="normal">NA</mtext><mo stretchy="false" form="postfix">]</mo></mrow><mi>k</mi></mfrac></mrow><annotation encoding="application/x-tex">\text{ratio}_k = \frac{\sum_{i=1}^{k} \mathbf{1}[\text{value}_i = \text{NA}]}{k}</annotation></semantics></math></p>
 <p>A subject with no missing values always has ratio 0. One with all
 values missing has ratio 1.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">

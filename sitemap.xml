@@ -22,11 +22,13 @@
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/ctasapp-package.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/default_config.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/determine_plot_type.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/embedded_files_configured.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/filter_unscheduled.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/format_score.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/generate_sample_csv.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_default_features.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_embedded_paths.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_param_icons.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_plot_visit_levels.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/get_query_colors.html</loc></url>
@@ -60,6 +62,7 @@
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/recompute_max_score.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/reconstruct_from_upload.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/render_score_dt.html</loc></url>
+<url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/resolve_config_path.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/run_ctas_app.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/sample_ctas_data.html</loc></url>
 <url><loc>https://IMPALA-Consortium.github.io/ctasapp/reference/sample_ctas_results.html</loc></url>

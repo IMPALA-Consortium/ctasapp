@@ -8,3 +8,7 @@ series data.
 ## Author
 
 **Maintainer**: Björn Koneswarakantha <bjoern.koneswarakantha@roche.com>
+
+Authors:
+
+- Björn Koneswarakantha <bjoern.koneswarakantha@roche.com>

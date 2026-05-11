@@ -11,6 +11,7 @@ You can install the development version of ctasapp from
 [GitHub](https://github.com/IMPALA-Consortium/ctasapp) with:
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("IMPALA-Consortium/ctasapp")
 ```
@@ -20,6 +21,7 @@ remotes::install_github("IMPALA-Consortium/ctasapp")
 Launch the app with bundled sample data:
 
 ``` r
+
 library(ctasapp)
 run_ctas_app()
 ```
@@ -30,23 +32,46 @@ site outlier scores.
 
 ## Configuration
 
-The app ships with a default `config.yml` that controls colours,
-parameter icons, and which ctas features are pre-selected. To customise,
-copy the default config and pass your version to
-[`run_ctas_app()`](https://IMPALA-Consortium.github.io/ctasapp/reference/run_ctas_app.md):
+The app ships with a default `ctasapp.yml` that controls colours,
+parameter icons, which ctas features are pre-selected, and (optionally)
+the location of an embedded dataset to make available in the Data Source
+dropdown.
+
+When
+[`run_ctas_app()`](https://IMPALA-Consortium.github.io/ctasapp/reference/run_ctas_app.md)
+is called without an explicit `config = ...`, the following discovery
+chain is used:
+
+1.  `ctasapp.yml` in the current working directory (i.e. next to
+    `app.R`).
+2.  `system.file("ctasapp.yml", package = "ctasapp")` (the copy shipped
+    with the installed package).
+3.  Built-in defaults if neither is found.
+
+To customise, copy the default config next to your `app.R` and edit it —
+[`run_ctas_app()`](https://IMPALA-Consortium.github.io/ctasapp/reference/run_ctas_app.md)
+will discover it automatically via step 1 of the chain above:
 
 ``` r
-# Copy the shipped default as a starting point
+
+# Copy the shipped default into the app directory
 file.copy(
-  system.file("config.yml", package = "ctasapp"),
-  "my_config.yml"
+  system.file("ctasapp.yml", package = "ctasapp"),
+  "ctasapp.yml"
 )
 
-# Edit my_config.yml to taste, then launch:
-run_ctas_app(config = "my_config.yml")
+# Edit ctasapp.yml to taste, then launch:
+run_ctas_app()
 ```
 
-The config file is YAML with three sections:
+Alternatively, pass an explicit path:
+
+``` r
+
+run_ctas_app(config = "/path/to/ctasapp.yml")
+```
+
+The config file is YAML with up to four sections:
 
 ``` yaml
 colors:
@@ -68,9 +93,41 @@ features:
     - autocorr
     - average
     - sd
+
+# Optional embedded dataset shipped with the deployed app
+embedded:
+  results: data/results.parquet
+  input: data/input.parquet
+  untransformed: data/untransformed.parquet  # optional
+  queries: data/queries.parquet              # optional
 ```
 
 Any key you omit falls back to the built-in default.
+
+### Embedded datasets (Posit Connect deployments)
+
+When the `embedded:` block is set with at least `results` and `input`,
+an **Embedded data set** entry is added to the Data Source dropdown.
+Clicking **Load Data** reads those files and pushes them through the
+same validation and reconstruction pipeline used for uploads.
+
+Paths in `embedded:` may be absolute, contain `~`, or be **relative to
+the directory containing `ctasapp.yml`**. This is the recommended
+pattern for Posit Connect deployments — bundle `app.R`, `ctasapp.yml`,
+and a `data/` folder together:
+
+``` r
+
+rsconnect::deployApp(
+  appFiles = c("app.R", "ctasapp.yml", "data/")
+)
+```
+
+On the server, `app.R` runs from the bundle root, `ctasapp.yml` is
+discovered via step 1 of the chain above, and the relative `data/...`
+paths resolve against it. The Data Source dropdown lists the resolved
+file paths with a per-file existence marker so operators can verify the
+deployment without running a full Load.
 
 ## AI Disclaimer
 
@@ -143,12 +200,16 @@ control steps:
   : Arrange visit names into clinically meaningful order
 - [`combine_ctas_input()`](https://IMPALA-Consortium.github.io/ctasapp/reference/combine_ctas_input.md)
   : Combine multiple ctas input lists
+- [`embedded_files_configured()`](https://IMPALA-Consortium.github.io/ctasapp/reference/embedded_files_configured.md)
+  : Check whether the embedded dataset feature is configured
 - [`encode_categorical()`](https://IMPALA-Consortium.github.io/ctasapp/reference/encode_categorical.md)
   : One-hot encode a categorical variable
 - [`generate_sample_csv()`](https://IMPALA-Consortium.github.io/ctasapp/reference/generate_sample_csv.md)
   : Generate sample upload CSV files
 - [`get_default_features()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_default_features.md)
   : Get default features from configuration
+- [`get_embedded_paths()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_embedded_paths.md)
+  : Get embedded dataset file paths from configuration
 - [`get_param_icons()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_param_icons.md)
   : Get parameter type icon mapping from configuration
 - [`get_plot_visit_levels()`](https://IMPALA-Consortium.github.io/ctasapp/reference/get_plot_visit_levels.md)

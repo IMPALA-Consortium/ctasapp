@@ -19,13 +19,3 @@ SCORE_COLORS_TABLE
 
 SCORE_COLORS_TABLE_TEXT
 ```
-
-## Format
-
-An object of class `numeric` of length 4.
-
-An object of class `character` of length 5.
-
-An object of class `character` of length 5.
-
-An object of class `character` of length 5.

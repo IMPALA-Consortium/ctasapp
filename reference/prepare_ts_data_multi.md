@@ -5,7 +5,10 @@ Like
 but accepts a vector of parameter IDs. When `untransformed` is supplied
 (non-NULL), joins in the original pre-transformation values
 (original_value, lower, upper, original_category) keyed on
-`subject_id + parameter_category_2 + timepoint_1_name`.
+`subject_id + parameter_category_2 + timepoint_1_name`. Any additional
+columns present in `untransformed` (beyond the join keys and the
+standard fields) are passed through to the output so they appear in the
+Source Data table.
 
 ## Usage
 
@@ -38,8 +41,9 @@ prepare_ts_data_multi(
 - untransformed:
 
   Optional data frame with columns subject_id, parameter_category_2,
-  timepoint_1_name, original_value, lower, upper, original_category.
-  Pass NULL (default) to show transformed result only.
+  timepoint_1_name, original_value, lower, upper, original_category,
+  plus any extra user columns to pass through. Pass NULL (default) to
+  show transformed result only.
 
 - plot_type:
 

@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">ctasapp</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -78,37 +78,67 @@
 <div class="section level2">
 <h2 id="configuration">Configuration<a class="anchor" aria-label="anchor" href="#configuration"></a>
 </h2>
-<p>The app ships with a default <code>config.yml</code> that controls colours, parameter icons, and which ctas features are pre-selected. To customise, copy the default config and pass your version to <code><a href="reference/run_ctas_app.html">run_ctas_app()</a></code>:</p>
+<p>The app ships with a default <code>ctasapp.yml</code> that controls colours, parameter icons, which ctas features are pre-selected, and (optionally) the location of an embedded dataset to make available in the Data Source dropdown.</p>
+<p>When <code><a href="reference/run_ctas_app.html">run_ctas_app()</a></code> is called without an explicit <code>config = ...</code>, the following discovery chain is used:</p>
+<ol style="list-style-type: decimal">
+<li>
+<code>ctasapp.yml</code> in the current working directory (i.e. next to <code>app.R</code>).</li>
+<li>
+<code>system.file("ctasapp.yml", package = "ctasapp")</code> (the copy shipped with the installed package).</li>
+<li>Built-in defaults if neither is found.</li>
+</ol>
+<p>To customise, copy the default config next to your <code>app.R</code> and edit it — <code><a href="reference/run_ctas_app.html">run_ctas_app()</a></code> will discover it automatically via step 1 of the chain above:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Copy the shipped default as a starting point</span></span>
+<code class="sourceCode R"><span><span class="co"># Copy the shipped default into the app directory</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"config.yml"</span>, package <span class="op">=</span> <span class="st">"ctasapp"</span><span class="op">)</span>,</span>
-<span>  <span class="st">"my_config.yml"</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"ctasapp.yml"</span>, package <span class="op">=</span> <span class="st">"ctasapp"</span><span class="op">)</span>,</span>
+<span>  <span class="st">"ctasapp.yml"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Edit my_config.yml to taste, then launch:</span></span>
-<span><span class="fu"><a href="reference/run_ctas_app.html">run_ctas_app</a></span><span class="op">(</span>config <span class="op">=</span> <span class="st">"my_config.yml"</span><span class="op">)</span></span></code></pre></div>
-<p>The config file is YAML with three sections:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">colors</span><span class="kw">:</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="at">  </span><span class="fu">score_breaks</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="fl">1.3</span><span class="kw">,</span><span class="at"> </span><span class="dv">3</span><span class="kw">,</span><span class="at"> </span><span class="dv">5</span><span class="kw">,</span><span class="at"> </span><span class="dv">10</span><span class="kw">]</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="at">  </span><span class="fu">plot</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"#9ED782"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#fed8019c"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#fed801"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FEAA01"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FF5858"</span><span class="kw">]</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">  </span><span class="fu">table</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"#FFFFFF"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#feed01"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#fed801"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FEAA01"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FF5858"</span><span class="kw">]</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">  </span><span class="fu">table_text</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"#1A1A1A"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#1A1A1A"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#1A1A1A"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FFFFFF"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FFFFFF"</span><span class="kw">]</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="at">  </span><span class="fu">query_no_change</span><span class="kw">:</span><span class="at"> </span><span class="st">"#a380e9"</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="at">  </span><span class="fu">query_data_change</span><span class="kw">:</span><span class="at"> </span><span class="st">"#2790e0"</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="fu">icons</span><span class="kw">:</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="at">  </span><span class="fu">range_normalized</span><span class="kw">:</span><span class="at"> flask</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="at">  </span><span class="fu">numeric</span><span class="kw">:</span><span class="at"> chart-line</span></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="at">  </span><span class="fu">categorical</span><span class="kw">:</span><span class="at"> water</span></span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="at">  </span><span class="fu">bar</span><span class="kw">:</span><span class="at"> chart-bar</span></span>
-<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a></span>
-<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="fu">features</span><span class="kw">:</span></span>
-<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="at">  </span><span class="fu">default</span><span class="kw">:</span></span>
-<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> autocorr</span></span>
-<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> average</span></span>
-<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> sd</span></span></code></pre></div>
+<span><span class="co"># Edit ctasapp.yml to taste, then launch:</span></span>
+<span><span class="fu"><a href="reference/run_ctas_app.html">run_ctas_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Alternatively, pass an explicit path:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/run_ctas_app.html">run_ctas_app</a></span><span class="op">(</span>config <span class="op">=</span> <span class="st">"/path/to/ctasapp.yml"</span><span class="op">)</span></span></code></pre></div>
+<p>The config file is YAML with up to four sections:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">colors</span><span class="kw">:</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="at">  </span><span class="fu">score_breaks</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="fl">1.3</span><span class="kw">,</span><span class="at"> </span><span class="dv">3</span><span class="kw">,</span><span class="at"> </span><span class="dv">5</span><span class="kw">,</span><span class="at"> </span><span class="dv">10</span><span class="kw">]</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="at">  </span><span class="fu">plot</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"#9ED782"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#fed8019c"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#fed801"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FEAA01"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FF5858"</span><span class="kw">]</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="at">  </span><span class="fu">table</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"#FFFFFF"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#feed01"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#fed801"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FEAA01"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FF5858"</span><span class="kw">]</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="at">  </span><span class="fu">table_text</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"#1A1A1A"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#1A1A1A"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#1A1A1A"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FFFFFF"</span><span class="kw">,</span><span class="at"> </span><span class="st">"#FFFFFF"</span><span class="kw">]</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="at">  </span><span class="fu">query_no_change</span><span class="kw">:</span><span class="at"> </span><span class="st">"#a380e9"</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="at">  </span><span class="fu">query_data_change</span><span class="kw">:</span><span class="at"> </span><span class="st">"#2790e0"</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="fu">icons</span><span class="kw">:</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="at">  </span><span class="fu">range_normalized</span><span class="kw">:</span><span class="at"> flask</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="at">  </span><span class="fu">numeric</span><span class="kw">:</span><span class="at"> chart-line</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="at">  </span><span class="fu">categorical</span><span class="kw">:</span><span class="at"> water</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="at">  </span><span class="fu">bar</span><span class="kw">:</span><span class="at"> chart-bar</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="fu">features</span><span class="kw">:</span></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="at">  </span><span class="fu">default</span><span class="kw">:</span></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> autocorr</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> average</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> sd</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a><span class="co"># Optional embedded dataset shipped with the deployed app</span></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="fu">embedded</span><span class="kw">:</span></span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="at">  </span><span class="fu">results</span><span class="kw">:</span><span class="at"> data/results.parquet</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a><span class="at">  </span><span class="fu">input</span><span class="kw">:</span><span class="at"> data/input.parquet</span></span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a><span class="at">  </span><span class="fu">untransformed</span><span class="kw">:</span><span class="at"> data/untransformed.parquet</span><span class="co">  # optional</span></span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a><span class="at">  </span><span class="fu">queries</span><span class="kw">:</span><span class="at"> data/queries.parquet</span><span class="co">              # optional</span></span></code></pre></div>
 <p>Any key you omit falls back to the built-in default.</p>
+<div class="section level3">
+<h3 id="embedded-datasets-posit-connect-deployments">Embedded datasets (Posit Connect deployments)<a class="anchor" aria-label="anchor" href="#embedded-datasets-posit-connect-deployments"></a>
+</h3>
+<p>When the <code>embedded:</code> block is set with at least <code>results</code> and <code>input</code>, an <strong>Embedded data set</strong> entry is added to the Data Source dropdown. Clicking <strong>Load Data</strong> reads those files and pushes them through the same validation and reconstruction pipeline used for uploads.</p>
+<p>Paths in <code>embedded:</code> may be absolute, contain <code>~</code>, or be <strong>relative to the directory containing <code>ctasapp.yml</code></strong>. This is the recommended pattern for Posit Connect deployments — bundle <code>app.R</code>, <code>ctasapp.yml</code>, and a <code>data/</code> folder together:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">rsconnect</span><span class="fu">::</span><span class="fu">deployApp</span><span class="op">(</span></span>
+<span>  appFiles <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"app.R"</span>, <span class="st">"ctasapp.yml"</span>, <span class="st">"data/"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>On the server, <code>app.R</code> runs from the bundle root, <code>ctasapp.yml</code> is discovered via step 1 of the chain above, and the relative <code>data/...</code> paths resolve against it. The Data Source dropdown lists the resolved file paths with a per-file existence marker so operators can verify the deployment without running a full Load.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="ai-disclaimer">AI Disclaimer<a class="anchor" aria-label="anchor" href="#ai-disclaimer"></a>

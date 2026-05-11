@@ -32,11 +32,11 @@ explicitly excluded with a `# nocov` annotation.
 
 ### When `# nocov` is acceptable
 
-| Category                                                            | Example                                           | Annotation style                                 |
-|---------------------------------------------------------------------|---------------------------------------------------|--------------------------------------------------|
-| Shiny reactive / render blocks that depend on `input$` or `session` | `output$plot <- renderPlot({ ... })`              | `# nocov start` / `# nocov end` around the block |
-| Error-handling UI paths inside `observeEvent` / `withProgress`      | `shiny::showNotification(...)` after a `tryCatch` | Same block style                                 |
-| Defensive guards that can only trigger inside a running app         | `if (length(sites) > 24)` cap                     | Inline `# nocov`                                 |
+| Category | Example | Annotation style |
+|----|----|----|
+| Shiny reactive / render blocks that depend on `input$` or `session` | `output$plot <- renderPlot({ ... })` | `# nocov start` / `# nocov end` around the block |
+| Error-handling UI paths inside `observeEvent` / `withProgress` | `shiny::showNotification(...)` after a `tryCatch` | Same block style |
+| Defensive guards that can only trigger inside a running app | `if (length(sites) > 24)` cap | Inline `# nocov` |
 
 ### When `# nocov` is **not** acceptable
 
