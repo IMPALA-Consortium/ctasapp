@@ -11,5 +11,10 @@ Interactive Shiny application for exploring results from the ctas (Clinical Time
 \author{
 \strong{Maintainer}: Björn Koneswarakantha \email{bjoern.koneswarakantha@roche.com}
 
+Authors:
+\itemize{
+  \item Björn Koneswarakantha \email{bjoern.koneswarakantha@roche.com}
+}
+
 }
 \keyword{internal}

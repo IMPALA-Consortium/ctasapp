@@ -10,7 +10,7 @@ default_config()
 A nested list.
 }
 \description{
-Returns the hardcoded defaults that match the shipped \code{inst/config.yml}.
+Returns the hardcoded defaults that match the shipped \code{inst/ctasapp.yml}.
 Used as fallback when keys are missing from a user-supplied config.
 }
 \keyword{internal}

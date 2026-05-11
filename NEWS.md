@@ -1,3 +1,10 @@
+# ctasapp 0.4.0
+* standard config renamed to ctasapp.yml
+* ctasapp.yml allows embedded datasets
+* by default will check parent directory for ctasapp.yml
+* bugfix ensure additional columns in query and untransformed data sets pass through dashboard
+* bugfix untranformed data not showing correct values when data set load contains multiple studies
+
 # ctasapp 0.3.0
 * support multistudy data sets
 * fix sites to be displayed across all fields using site filter

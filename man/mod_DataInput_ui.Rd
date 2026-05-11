@@ -15,3 +15,9 @@ Upload mode is selected by default. When uploading, 2 mandatory file
 inputs (results, input) and 2 optional file inputs (untransformed,
 queries) are shown with collapsible format documentation.
 }
+\details{
+When the \verb{embedded:} block is set in \code{ctasapp.yml}
+(see \code{\link[=load_config]{load_config()}} / \code{\link[=get_embedded_paths]{get_embedded_paths()}}), an additional
+"Embedded data set" entry is added to the dropdown that loads the
+configured files through the same pipeline as uploads.
+}

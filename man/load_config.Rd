@@ -7,13 +7,23 @@
 load_config(path = NULL)
 }
 \arguments{
-\item{path}{Path to a YAML file. When \code{NULL} (default), uses the
-config shipped with the package (\code{inst/config.yml}).}
+\item{path}{Path to a YAML file. When \code{NULL} (default), the discovery
+chain above is used.}
 }
 \value{
-A nested list with elements \code{colors} and \code{features}.
+A nested list with elements \code{colors}, \code{icons}, \code{features},
+and \code{embedded}.
 }
 \description{
 Reads a YAML config file and merges with built-in defaults so that
-missing keys fall back gracefully.
+missing keys fall back gracefully. When \code{path} is \code{NULL} the file is
+resolved using a discovery chain:
+\enumerate{
+\item \code{ctasapp.yml} in the current working directory (i.e. the
+folder containing \code{app.R} when launched by Posit Connect or
+\code{shiny::runApp()}).
+\item \code{system.file("ctasapp.yml", package = "ctasapp")} (the copy
+shipped with the installed package).
+}
+If neither is found, the built-in \code{\link[=default_config]{default_config()}} is returned.
 }

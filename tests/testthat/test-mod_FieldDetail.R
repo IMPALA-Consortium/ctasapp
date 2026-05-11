@@ -887,3 +887,37 @@ test_that("study filter properly filters measures, ctas_results, untransformed, 
     }
   )
 })
+
+test_that("flt_untransformed filters by study column directly when present", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  subjects <- unique(m$subject_id)
+  half <- ceiling(length(subjects) / 2)
+  subj_a <- subjects[seq_len(half)]
+  m$study <- ifelse(m$subject_id %in% subj_a, "ST-A", "ST-B")
+
+  ut <- sample_sdtm_data$untransformed
+  # Assign every untransformed row to ST-B so a subject-id filter would let
+  # subj_a rows leak through. Only a `study`-based filter correctly drops
+  # everything when ST-A is selected.
+  ut$study <- "ST-B"
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_untransformed = shiny::reactiveVal(ut),
+      rctv_queries = shiny::reactiveVal(NULL),
+      rctv_dataset_label = shiny::reactiveVal("multi"),
+      rctv_studies = shiny::reactiveVal(c("ST-A", "ST-B"))
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE,
+                        study_filter = "ST-A")
+      session$flushReact()
+      filtered_ut <- flt_untransformed()
+      expect_true(all(filtered_ut$study == "ST-A"))
+      expect_equal(nrow(filtered_ut), 0L)
+    }
+  )
+})

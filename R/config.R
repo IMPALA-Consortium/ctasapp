@@ -22,11 +22,12 @@ ctas_log <- function(...) {
 .cfg_env$score_colors_table <- NULL
 .cfg_env$score_colors_table_text <- NULL
 .cfg_env$icons <- NULL
+.cfg_env$embedded_paths <- NULL
 
 
 #' Get built-in default configuration
 #'
-#' Returns the hardcoded defaults that match the shipped `inst/config.yml`.
+#' Returns the hardcoded defaults that match the shipped `inst/ctasapp.yml`.
 #' Used as fallback when keys are missing from a user-supplied config.
 #'
 #' @return A nested list.
@@ -50,6 +51,12 @@ default_config <- function() {
     features = list(
       default = c("autocorr", "average", "sd",
                    "unique_value_count_relative", "lof", "range")
+    ),
+    embedded = list(
+      results = NULL,
+      input = NULL,
+      untransformed = NULL,
+      queries = NULL
     )
   )
 }
@@ -58,19 +65,43 @@ default_config <- function() {
 #' Load app configuration from a YAML file
 #'
 #' Reads a YAML config file and merges with built-in defaults so that
-#' missing keys fall back gracefully.
+#' missing keys fall back gracefully. When `path` is `NULL` the file is
+#' resolved using a discovery chain:
+#' \enumerate{
+#'   \item `ctasapp.yml` in the current working directory (i.e. the
+#'     folder containing `app.R` when launched by Posit Connect or
+#'     `shiny::runApp()`).
+#'   \item `system.file("ctasapp.yml", package = "ctasapp")` (the copy
+#'     shipped with the installed package).
+#' }
+#' If neither is found, the built-in [default_config()] is returned.
 #'
-#' @param path Path to a YAML file. When `NULL` (default), uses the
-#'   config shipped with the package (`inst/config.yml`).
+#' @param path Path to a YAML file. When `NULL` (default), the discovery
+#'   chain above is used.
 #'
-#' @return A nested list with elements `colors` and `features`.
+#' @return A nested list with elements `colors`, `icons`, `features`,
+#'   and `embedded`.
 #' @export
 load_config <- function(path = NULL) {
   defaults <- default_config()
 
   if (is.null(path)) {
-    path <- system.file("config.yml", package = "ctasapp")
-    if (path == "") return(defaults) # nocov
+    cwd_path <- file.path(getwd(), "ctasapp.yml")
+    if (file.exists(cwd_path)) {
+      ctas_log("Loading config from working directory: ", cwd_path)
+      path <- cwd_path
+    } else {
+      pkg_path <- system.file("ctasapp.yml", package = "ctasapp")
+      if (nzchar(pkg_path)) {
+        ctas_log("Loading config from installed package: ", pkg_path)
+        path <- pkg_path
+      } else {
+        ctas_log("No ctasapp.yml found; using built-in defaults") # nocov
+        return(defaults) # nocov
+      }
+    }
+  } else {
+    ctas_log("Loading config from explicit path: ", path)
   }
 
   if (!file.exists(path)) {
@@ -79,6 +110,7 @@ load_config <- function(path = NULL) {
   }
 
   user <- yaml::read_yaml(path)
+  cfg_dir <- dirname(normalizePath(path, mustWork = TRUE))
 
   cfg <- defaults
   if (!is.null(user$colors)) {
@@ -98,8 +130,36 @@ load_config <- function(path = NULL) {
   if (!is.null(user$features) && !is.null(user$features$default)) {
     cfg$features$default <- as.character(user$features$default)
   }
+  if (!is.null(user$embedded)) {
+    for (key in c("results", "input", "untransformed", "queries")) {
+      val <- user$embedded[[key]]
+      if (!is.null(val) && nzchar(val)) {
+        cfg$embedded[[key]] <- resolve_config_path(as.character(val), cfg_dir)
+      }
+    }
+  }
 
   cfg
+}
+
+
+#' Resolve a path from a config file
+#'
+#' Expands `~`, then resolves relative paths against `base_dir` (the
+#' directory containing the active config file). Absolute paths are
+#' returned as-is (after expansion).
+#'
+#' @param path Character scalar path from the config file.
+#' @param base_dir Directory of the active config file.
+#' @return Character scalar resolved path.
+#' @keywords internal
+resolve_config_path <- function(path, base_dir) {
+  path <- path.expand(path)
+  if (!nzchar(path)) return(path) # nocov
+  if (substr(path, 1, 1) == "/" || grepl("^[A-Za-z]:[/\\\\]", path)) {
+    return(path)
+  }
+  file.path(base_dir, path)
 }
 
 
@@ -124,8 +184,40 @@ apply_config <- function(cfg) {
   .cfg_env$query_data_change <- cc[["query_data_change"]]
   .cfg_env$icons <- cfg[["icons"]]
   .cfg_env$default_features <- cfg[["features"]][["default"]]
+  .cfg_env$embedded_paths <- cfg[["embedded"]]
 
   invisible(cfg)
+}
+
+
+#' Get embedded dataset file paths from configuration
+#'
+#' Returns the list of resolved file paths configured in the `embedded:`
+#' block of `ctasapp.yml`, or `NULL` when the feature is not configured
+#' (i.e. neither `results` nor `input` was set).
+#'
+#' @return A named list with elements `results`, `input`, `untransformed`,
+#'   `queries` (each a character path or `NULL`), or `NULL` if disabled.
+#' @export
+get_embedded_paths <- function() {
+  paths <- .cfg_env$embedded_paths
+  if (is.null(paths)) return(NULL)
+  if (is.null(paths$results) && is.null(paths$input)) return(NULL)
+  paths
+}
+
+
+#' Check whether the embedded dataset feature is configured
+#'
+#' Returns `TRUE` when [get_embedded_paths()] is non-`NULL`, i.e. the
+#' operator has set the `embedded:` block in `ctasapp.yml`. File
+#' existence on disk is not checked here; missing files are surfaced
+#' as errors when the user clicks Load.
+#'
+#' @return Logical scalar.
+#' @export
+embedded_files_configured <- function() {
+  !is.null(get_embedded_paths())
 }
 
 

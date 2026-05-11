@@ -47,6 +47,11 @@ read_upload_file <- function(path, name) {
 #' inputs (results, input) and 2 optional file inputs (untransformed,
 #' queries) are shown with collapsible format documentation.
 #'
+#' When the `embedded:` block is set in `ctasapp.yml`
+#' (see [load_config()] / [get_embedded_paths()]), an additional
+#' "Embedded data set" entry is added to the dropdown that loads the
+#' configured files through the same pipeline as uploads.
+#'
 #' @param id Module namespace ID.
 #' @export
 mod_DataInput_ui <- function(id) {
@@ -63,6 +68,10 @@ mod_DataInput_ui <- function(id) {
           "SDTM sample (pharmaversesdtm)" = "sdtm"
         ),
         selected = "upload"
+      ),
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'] == 'embedded'", ns("data_source")),
+        shiny::uiOutput(ns("embedded_panel"))
       ),
       shiny::conditionalPanel(
         condition = sprintf("input['%s'] == 'upload'", ns("data_source")),
@@ -174,9 +183,9 @@ mod_DataInput_ui <- function(id) {
                          "Untransformed data (optional)",
                          accept = c(".csv", ".parquet", ".rda", ".rdata")),
         shiny::fileInput(ns("file_queries"), "Query data (optional)",
-                         accept = c(".csv", ".parquet", ".rda", ".rdata")),
-        shiny::uiOutput(ns("study_selector"))
+                         accept = c(".csv", ".parquet", ".rda", ".rdata"))
       ),
+      shiny::uiOutput(ns("study_selector")),
       shiny::actionButton(
         ns("load_data"),
         "Load Data",
@@ -213,6 +222,68 @@ mod_DataInput_server <- function(id) {
     rv_available_studies <- shiny::reactiveVal(NULL)
     rv_selected_study <- shiny::reactiveVal(NULL)
 
+    # -- Inject "Embedded data set" option when configured in ctasapp.yml -----
+    shiny::observe({
+      if (!embedded_files_configured()) return()
+      shiny::updateSelectInput(
+        session, "data_source",
+        choices = c(
+          "Upload files" = "upload",
+          "Embedded data set" = "embedded",
+          "ctas sample" = "ctas",
+          "SDTM sample (pharmaversesdtm)" = "sdtm"
+        ),
+        selected = shiny::isolate(input$data_source) %||% "upload"
+      )
+    })
+
+    # -- Embedded panel: show resolved paths with existence markers -----------
+    output$embedded_panel <- shiny::renderUI({ # nocov start
+      paths <- get_embedded_paths()
+      if (is.null(paths)) {
+        return(shiny::tags$p(
+          class = "text-muted small",
+          "No embedded dataset configured."
+        ))
+      }
+      labels <- list(
+        results = "Results", input = "Input",
+        untransformed = "Untransformed (optional)",
+        queries = "Queries (optional)"
+      )
+      rows <- lapply(names(labels), function(key) {
+        p <- paths[[key]]
+        if (is.null(p) || !nzchar(p)) {
+          return(shiny::tags$div(
+            class = "text-muted small",
+            shiny::tags$strong(paste0(labels[[key]], ": ")),
+            shiny::tags$em("not set")
+          ))
+        }
+        ok <- file.exists(p)
+        shiny::tags$div(
+          class = "small",
+          shiny::tags$span(
+            style = paste0("color:", if (ok) "#2e7d32" else "#c62828",
+                           ";font-weight:bold;"),
+            if (ok) "\u2713" else "\u2717"
+          ),
+          " ",
+          shiny::tags$strong(paste0(labels[[key]], ": ")),
+          shiny::tags$code(p)
+        )
+      })
+      shiny::tags$div(
+        class = "mb-2",
+        shiny::tags$p(
+          class = "text-muted small mb-1",
+          "Files configured in ", shiny::tags$code("ctasapp.yml"),
+          ":"
+        ),
+        rows
+      )
+    }) # nocov end
+
     # -- Detect studies from results file when uploaded -----------------------
     shiny::observeEvent(input$file_results, { # nocov start
       res_file <- input$file_results
@@ -233,9 +304,35 @@ mod_DataInput_server <- function(id) {
       }
     }) # nocov end
 
+    # -- Detect studies from embedded results file when selected --------------
+    shiny::observeEvent(input$data_source, { # nocov start
+      if (input$data_source != "embedded") return()
+      paths <- get_embedded_paths()
+      if (is.null(paths) || is.null(paths$results) ||
+          !file.exists(paths$results)) {
+        rv_available_studies(NULL)
+        return()
+      }
+      results_df <- tryCatch(
+        read_upload_file(paths$results, basename(paths$results)),
+        error = function(e) { NULL }
+      )
+      if (is.null(results_df) || !"study" %in% names(results_df)) {
+        rv_available_studies(NULL)
+        return()
+      }
+      studies <- sort(unique(results_df$study))
+      if (length(studies) > 1) {
+        rv_available_studies(studies)
+      } else {
+        rv_available_studies(NULL)
+      }
+    }) # nocov end
+
     output$study_selector <- shiny::renderUI({ # nocov start
       studies <- rv_available_studies()
-      if (is.null(studies)) return(NULL)
+      src <- input$data_source %||% "upload"
+      if (is.null(studies) || !src %in% c("upload", "embedded")) return(NULL)
       shiny::selectInput(
         session$ns("upload_study"),
         "Select Study",
@@ -243,6 +340,127 @@ mod_DataInput_server <- function(id) {
         selected = studies[1]
       )
     }) # nocov end
+
+    # -- Shared pipeline: validate -> aggregate -> reconstruct ----------------
+    # Used by both the upload and embedded branches. Returns a list with
+    # `ctas_data` and `ctas_results`, or NULL when an error/notification was
+    # shown and the caller should abort. Source label ("upload" / "embedded")
+    # is only used to tweak user-facing messages.
+    process_loaded_frames <- function(results_df, input_df,             # nocov start
+                                      untransformed_df = NULL,
+                                      queries_df = NULL,
+                                      source_label = "upload") {
+      shiny::setProgress(0.2, detail = "Validating files")
+      ctas_log("Validating ", source_label, " files...")
+      errs_res <- validate_upload_results(results_df)
+      errs_inp <- validate_upload_input(input_df)
+      all_errs <- c(errs_res, errs_inp)
+      if (!is.null(untransformed_df)) {
+        all_errs <- c(all_errs, validate_upload_untransformed(untransformed_df))
+      }
+      if (!is.null(queries_df)) {
+        all_errs <- c(all_errs, validate_upload_queries(queries_df))
+      }
+      if (length(all_errs) > 0) {
+        ctas_log("Validation failed: ", paste(all_errs, collapse = "; "))
+        shiny::showNotification(
+          htmltools::HTML(paste(all_errs, collapse = "<br>")),
+          type = "error", duration = 12
+        )
+        return(NULL)
+      }
+      ctas_log("Validation passed")
+
+      # Filter out ratio_missing entries paired with categorical/bar params
+      # or where ratio_missing is the only type in the category_2 group
+      if ("parameter_category_2" %in% names(input_df) &&
+          "parameter_category_3" %in% names(input_df)) {
+        cat2_with_catbar <- unique(
+          input_df$parameter_category_2[
+            input_df$parameter_category_3 %in% c("categorical", "bar")
+          ]
+        )
+        cat2_types <- tapply(
+          input_df$parameter_category_3,
+          input_df$parameter_category_2,
+          function(x) unique(x)
+        )
+        cat2_only_rm <- names(cat2_types)[
+          vapply(cat2_types, function(x) {
+            length(x) == 1L && x == "ratio_missing"
+          }, logical(1))
+        ]
+        rm_ids <- unique(
+          input_df$parameter_id[
+            input_df$parameter_category_3 == "ratio_missing" &
+            (input_df$parameter_category_2 %in% cat2_with_catbar |
+             input_df$parameter_category_2 %in% cat2_only_rm)
+          ]
+        )
+        if (length(rm_ids) > 0) {
+          ctas_log("Removing ", length(rm_ids),
+                  " ratio_missing parameter_id(s) paired with categorical")
+          input_df <- input_df[!input_df$parameter_id %in% rm_ids, ]
+          results_df <- results_df[!results_df$parameter_id %in% rm_ids, ]
+          shiny::showNotification(
+            "Missing Ratios timelines for categorical values not supported",
+            type = "warning", duration = 8
+          )
+        }
+      }
+
+      shiny::setProgress(0.3, detail = paste0(
+        "Aggregating results (", nrow(results_df), " rows)..."
+      ))
+      ctas_log("Aggregating results...")
+      results_df <- tryCatch(
+        aggregate_results(results_df),
+        error = function(e) { e }
+      )
+      if (inherits(results_df, "error")) {
+        ctas_log("ERROR in aggregate_results: ",
+                conditionMessage(results_df))
+        shiny::showNotification(
+          paste0("Error aggregating results: ",
+                 conditionMessage(results_df)),
+          type = "error", duration = 8
+        )
+        return(NULL)
+      }
+      ctas_log("Aggregated results: ", nrow(results_df), " rows")
+
+      shiny::setProgress(0.6, detail = "Cross-validating files")
+      cross_warns <- validate_upload_crossfile(input_df, results_df)
+      if (length(cross_warns) > 0) {
+        ctas_log("Cross-file warnings: ",
+                paste(cross_warns, collapse = "; "))
+        shiny::showNotification(
+          htmltools::HTML(paste("Warnings:", paste(cross_warns,
+                                                   collapse = "<br>"))),
+          type = "warning", duration = 10
+        )
+      }
+
+      shiny::setProgress(0.7, detail = "Reconstructing data structures")
+      ctas_log("Reconstructing from ", source_label, "...")
+      reconstructed <- tryCatch(
+        reconstruct_from_upload(
+          input_df, results_df, untransformed_df, queries_df
+        ),
+        error = function(e) { e }
+      )
+      if (inherits(reconstructed, "error")) {
+        ctas_log("ERROR in reconstruct_from_upload: ",
+                conditionMessage(reconstructed))
+        shiny::showNotification(
+          paste0("Error processing ", source_label, " data: ",
+                 conditionMessage(reconstructed)),
+          type = "error", duration = 8
+        )
+        return(NULL)
+      }
+      reconstructed
+    } # nocov end
 
     shiny::observeEvent(input$load_data, {
       ctas_log("=== Load Data button clicked ===")
@@ -265,6 +483,106 @@ mod_DataInput_server <- function(id) {
         ctas_results <- ctasapp::sample_sdtm_results
         label <- "SDTM sample"
         ctas_log("SDTM sample loaded OK")
+      } else if (source == "embedded") { # nocov start
+        ctas_log("Embedded mode: reading configured files...")
+        paths <- get_embedded_paths()
+        if (is.null(paths)) {
+          shiny::showNotification(
+            "Embedded data set is not configured.",
+            type = "error", duration = 5
+          )
+          return()
+        }
+
+        # Check that all configured files exist on disk; surface missing
+        # paths in a single error so operators can fix the deployment.
+        missing <- character()
+        for (key in c("results", "input", "untransformed", "queries")) {
+          p <- paths[[key]]
+          if (!is.null(p) && nzchar(p) && !file.exists(p)) {
+            missing <- c(missing, paste0(key, ": ", p))
+          }
+        }
+        if (length(missing) > 0) {
+          ctas_log("Missing embedded file(s): ",
+                  paste(missing, collapse = "; "))
+          shiny::showNotification(
+            htmltools::HTML(paste0(
+              "Configured embedded file(s) not found:<br>",
+              paste(missing, collapse = "<br>")
+            )),
+            type = "error", duration = 12
+          )
+          return()
+        }
+
+        shiny::setProgress(0.1, detail = "Reading embedded files")
+        results_df <- tryCatch(
+          read_upload_file(paths$results, basename(paths$results)),
+          error = function(e) { e }
+        )
+        if (inherits(results_df, "error")) {
+          shiny::showNotification(
+            paste0("Could not read results file '", paths$results,
+                   "': ", conditionMessage(results_df)),
+            type = "error", duration = 8
+          )
+          return()
+        }
+        input_df <- tryCatch(
+          read_upload_file(paths$input, basename(paths$input)),
+          error = function(e) { e }
+        )
+        if (inherits(input_df, "error")) {
+          shiny::showNotification(
+            paste0("Could not read input file '", paths$input,
+                   "': ", conditionMessage(input_df)),
+            type = "error", duration = 8
+          )
+          return()
+        }
+
+        untransformed_df <- NULL
+        if (!is.null(paths$untransformed) && nzchar(paths$untransformed)) {
+          untransformed_df <- tryCatch(
+            read_upload_file(paths$untransformed,
+                             basename(paths$untransformed)),
+            error = function(e) { NULL }
+          )
+        }
+        queries_df <- NULL
+        if (!is.null(paths$queries) && nzchar(paths$queries)) {
+          queries_df <- tryCatch(
+            read_upload_file(paths$queries, basename(paths$queries)),
+            error = function(e) { NULL }
+          )
+        }
+
+        # -- Filter to selected study when multi-study data ------------------
+        upload_study <- input$upload_study
+        if (!is.null(upload_study) && !is.null(rv_available_studies())) {
+          ctas_log("Filtering embedded data to study: ", upload_study)
+          if ("study" %in% names(results_df)) {
+            results_df <- results_df[results_df$study == upload_study, ]
+          }
+          if ("study" %in% names(input_df)) {
+            input_df <- input_df[input_df$study == upload_study, ]
+          }
+          rv_selected_study(upload_study)
+        } else {
+          rv_selected_study(NULL)
+        }
+
+        reconstructed <- process_loaded_frames(
+          results_df, input_df, untransformed_df, queries_df,
+          source_label = "embedded"
+        )
+        if (is.null(reconstructed)) return()
+        ctas_data <- reconstructed$ctas_data
+        ctas_results <- reconstructed$ctas_results
+        label <- tools::file_path_sans_ext(basename(paths$input))
+        ctas_log("Embedded load OK, label='", label, "'")
+        # nocov end
       } else { # nocov start
         ctas_log("Upload mode: reading uploaded files...")
         res_file <- input$file_results
@@ -341,13 +659,6 @@ mod_DataInput_server <- function(id) {
           rv_selected_study(NULL)
         }
 
-        shiny::setProgress(0.2, detail = "Validating files")
-        ctas_log("Validating uploaded files...")
-        errs_res <- validate_upload_results(results_df)
-        errs_inp <- validate_upload_input(input_df)
-        all_errs <- c(errs_res, errs_inp)
-        ctas_log("Validation errors so far: ", length(all_errs))
-
         ut_file <- input$file_untransformed
         untransformed_df <- NULL
         if (!is.null(ut_file)) {
@@ -356,10 +667,6 @@ mod_DataInput_server <- function(id) {
             read_upload_file(ut_file$datapath, ut_file$name),
             error = function(e) { NULL }
           )
-          if (!is.null(untransformed_df)) {
-            errs_ut <- validate_upload_untransformed(untransformed_df)
-            all_errs <- c(all_errs, errs_ut)
-          }
         }
 
         q_file <- input$file_queries
@@ -370,111 +677,13 @@ mod_DataInput_server <- function(id) {
             read_upload_file(q_file$datapath, q_file$name),
             error = function(e) { NULL }
           )
-          if (!is.null(queries_df)) {
-            errs_q <- validate_upload_queries(queries_df)
-            all_errs <- c(all_errs, errs_q)
-          }
         }
 
-        if (length(all_errs) > 0) {
-          ctas_log("Validation failed: ",
-                  paste(all_errs, collapse = "; "))
-          shiny::showNotification(
-            htmltools::HTML(paste(all_errs, collapse = "<br>")),
-            type = "error", duration = 12
-          )
-          return()
-        }
-        ctas_log("Validation passed")
-
-        # Filter out ratio_missing entries paired with categorical/bar params
-        # or where ratio_missing is the only type in the category_2 group
-        if ("parameter_category_2" %in% names(input_df) &&
-            "parameter_category_3" %in% names(input_df)) {
-          cat2_with_catbar <- unique(
-            input_df$parameter_category_2[
-              input_df$parameter_category_3 %in% c("categorical", "bar")
-            ]
-          )
-          cat2_types <- tapply(
-            input_df$parameter_category_3,
-            input_df$parameter_category_2,
-            function(x) unique(x)
-          )
-          cat2_only_rm <- names(cat2_types)[
-            vapply(cat2_types, function(x) {
-              length(x) == 1L && x == "ratio_missing"
-            }, logical(1))
-          ]
-          rm_ids <- unique(
-            input_df$parameter_id[
-              input_df$parameter_category_3 == "ratio_missing" &
-              (input_df$parameter_category_2 %in% cat2_with_catbar |
-               input_df$parameter_category_2 %in% cat2_only_rm)
-            ]
-          )
-          if (length(rm_ids) > 0) {
-            ctas_log("Removing ", length(rm_ids),
-                    " ratio_missing parameter_id(s) paired with categorical")
-            input_df <- input_df[!input_df$parameter_id %in% rm_ids, ]
-            results_df <- results_df[!results_df$parameter_id %in% rm_ids, ]
-            shiny::showNotification(
-              "Missing Ratios timelines for categorical values not supported",
-              type = "warning", duration = 8
-            )
-          }
-        }
-
-        shiny::setProgress(0.3, detail = paste0(
-          "Aggregating results (", nrow(results_df), " rows)..."
-        ))
-        ctas_log("Aggregating results...")
-        results_df <- tryCatch(
-          aggregate_results(results_df),
-          error = function(e) { e }
+        reconstructed <- process_loaded_frames(
+          results_df, input_df, untransformed_df, queries_df,
+          source_label = "upload"
         )
-        if (inherits(results_df, "error")) {
-          ctas_log("ERROR in aggregate_results: ",
-                  conditionMessage(results_df))
-          shiny::showNotification(
-            paste0("Error aggregating results: ",
-                   conditionMessage(results_df)),
-            type = "error", duration = 8
-          )
-          return()
-        }
-        ctas_log("Aggregated results: ", nrow(results_df), " rows")
-
-        shiny::setProgress(0.6, detail = "Cross-validating files")
-        cross_warns <- validate_upload_crossfile(input_df, results_df)
-        if (length(cross_warns) > 0) {
-          ctas_log("Cross-file warnings: ",
-                  paste(cross_warns, collapse = "; "))
-          shiny::showNotification(
-            htmltools::HTML(paste("Warnings:", paste(cross_warns,
-                                                     collapse = "<br>"))),
-            type = "warning", duration = 10
-          )
-        }
-
-        shiny::setProgress(0.7, detail = "Reconstructing data structures")
-        ctas_log("Reconstructing from upload...")
-        reconstructed <- tryCatch(
-          reconstruct_from_upload(
-            input_df, results_df, untransformed_df, queries_df
-          ),
-          error = function(e) { e }
-        )
-        if (inherits(reconstructed, "error")) {
-          ctas_log("ERROR in reconstruct_from_upload: ",
-                  conditionMessage(reconstructed))
-          shiny::showNotification(
-            paste0("Error processing uploaded data: ",
-                   conditionMessage(reconstructed)),
-            type = "error", duration = 8
-          )
-          return()
-        }
+        if (is.null(reconstructed)) return()
         ctas_data <- reconstructed$ctas_data
         ctas_results <- reconstructed$ctas_results
         label <- tools::file_path_sans_ext(inp_file$name)

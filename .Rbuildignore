@@ -13,3 +13,7 @@
 ^TODO\.md$
 ^debug\.R$
 .*\.parquet$
+^\.positai$
+^\.claude$
+^rsconnect$
+^ctasapp.yml$
