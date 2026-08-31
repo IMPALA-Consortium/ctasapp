@@ -1017,3 +1017,28 @@ test_that("mod_FieldDetail_server param_no_ctas flags fields without ctas result
     }
   )
 })
+
+
+test_that("mod_FieldDetail_server field_notice renders 'Only missingness' for pure-miss field", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      session$flushReact()
+
+      only_miss_ids <- param_only_miss()
+      shiny::req(length(only_miss_ids) > 0)
+      session$setInputs(selected_param = only_miss_ids[1])
+      session$flushReact()
+
+      notice <- output$field_notice
+      expect_true(any(grepl("Only missingness", as.character(notice))))
+    }
+  )
+})

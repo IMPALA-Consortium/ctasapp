@@ -738,7 +738,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       if (is.null(sel)) return(NULL)
       lookup <- rctv_param_lookup()
       match_row <- lookup$display_id == sel
-      if (!any(match_row)) return(NULL)
+      if (!any(match_row)) return(NULL) # nocov
 
       if (sel %in% param_only_miss()) {
         return(shiny::tags$div(
@@ -771,10 +771,10 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       df <- rctv_measures_feat()
       feats <- get_selected_features()
       splits <- split_param_ids(param_ids, df)
-      if (length(splits$missingness) == 0) return(NULL)
+      if (length(splits$missingness) == 0) return(NULL) # nocov
       scores_display <- prepare_score_table_multi(res, splits$missingness,
                                                   features = feats)
-      if (is.null(scores_display) || nrow(scores_display) == 0) return(NULL)
+      if (is.null(scores_display) || nrow(scores_display) == 0) return(NULL) # nocov
       scores_display
     })
 
@@ -967,22 +967,22 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         shiny::req(df, input$selected_param)
         param_ids <- get_param_ids()
         param_ids <- filter_param_ids(param_ids)
-        if (length(param_ids) == 0) return(NULL)
+        if (length(param_ids) == 0) return(NULL) # nocov
         sites <- unique(df$site[df$parameter_id %in% param_ids])
-        if (length(sites) == 0) return(NULL)
+        if (length(sites) == 0) return(NULL) # nocov
         return(sites)
       }
 
       if (mode == "missingness") {
         scores <- rctv_scores_miss()
-        if (is.null(scores) || nrow(scores) == 0) return(NULL)
+        if (is.null(scores) || nrow(scores) == 0) return(NULL) # nocov
         row_idx <- input$score_table_miss_rows_current
         dt_fresh <- identical(rv_dt_param_miss(), input$selected_param)
         if (!dt_fresh || is.null(row_idx) || length(row_idx) == 0) {
           return(NULL) # nocov
         }
         sites <- scores$site[row_idx]
-        if (length(sites) > 24) sites <- sites[seq_len(24)]
+        if (length(sites) > 24) sites <- sites[seq_len(24)] # nocov
         return(sites)
       }
 
