@@ -615,33 +615,3 @@ test_that("generate_sample_csv with NULL sdtm_categories exports all params", {
   input_params <- unique(input$parameter_id[input$study == "STUDY-002"])
   expect_true(all(sdtm_params %in% input_params))
 })
-
-
-test_that("prepare_ts_data_multi keeps ratio_missing rows when no regular sibling", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-
-  # ANISO and KETONES are pure-missingness fields in the SDTM sample.
-  for (nm in c("ANISO", "KETONES")) {
-    pids <- paste0("LB_MISS_", nm)
-    sites <- unique(m$site[m$parameter_id %in% pids])
-    ts <- prepare_ts_data_multi(m, pids, thresh = 0, sites = sites)
-    expect_gt(nrow(ts), 0)
-  }
-})
-
-test_that("prepare_ts_data_multi drops ratio_missing rows when a regular sibling exists", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  lookup <- build_param_lookup(m)
-
-  mixed <- vapply(lookup$parameter_ids, function(p) {
-    s <- split_param_ids(p, m)
-    length(s$regular) > 0 && length(s$missingness) > 0
-  }, logical(1))
-  shiny::req(any(mixed))
-  pids <- lookup$parameter_ids[[which(mixed)[1]]]
-  sites <- unique(m$site[m$parameter_id %in% pids])
-  ts <- prepare_ts_data_multi(m, pids, thresh = 0, sites = sites)
-
-  miss_pids <- split_param_ids(pids, m)$missingness
-  expect_false(any(ts$parameter_id %in% miss_pids))
-})

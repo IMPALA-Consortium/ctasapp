@@ -44,7 +44,7 @@ mod_FieldDetail_ui <- function(id) {
       style = "height:calc(100vh - 56px);overflow-y:auto;overflow-x:hidden;padding-right:4px;",
       shiny::fluidRow(
         shiny::column(
-          9,
+          5,
           shiny::h4(shiny::textOutput(ns("plot_title"))),
           shiny::h5(shiny::textOutput(ns("plot_subtitle")))
         ),
@@ -53,12 +53,16 @@ mod_FieldDetail_ui <- function(id) {
           shiny::radioButtons(
             ns("linkage_mode"),
             label = "Link plot & source data to:",
-            choices = c("Regular Scores (default)" = "regular",
+            choices = c("Regular Scores" = "regular",
                         "Missingness Scores" = "missingness",
                         "None" = "none"),
             selected = "regular",
             inline = FALSE
           )
+        ),
+        shiny::column(
+          4,
+          shiny::uiOutput(ns("field_notice"))
         )
       ),
       bslib::navset_pill(
@@ -530,6 +534,18 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       lookup$display_id[!has_ctas]
     })
 
+    # Fields whose only parameter_ids are ratio_missing (no regular sibling)
+    param_only_miss <- shiny::reactive({
+      df <- rctv_measures_feat()
+      shiny::req(df)
+      lookup <- rctv_param_lookup()
+      only_miss <- vapply(lookup$parameter_ids, function(pids) {
+        splits <- split_param_ids(pids, df)
+        length(splits$regular) == 0 && length(splits$missingness) > 0
+      }, logical(1))
+      lookup$display_id[only_miss]
+    })
+
     output$param_list <- shiny::renderUI({
       lookup <- rctv_param_lookup()
       shiny::req(lookup)
@@ -537,6 +553,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       include_miss <- input$include_miss %||% TRUE
       stats_miss <- if (include_miss) param_outliers_missing() else NULL
       no_ctas_ids <- param_no_ctas()
+      only_miss_ids <- param_only_miss()
 
       display_ids <- lookup$display_id
       n_reg <- stats_reg$n_outlier_sites[match(display_ids, stats_reg$display_id)]
@@ -573,6 +590,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       n_miss <- n_miss[ord]
 
       is_no_ctas <- display_ids %in% no_ctas_ids
+      is_only_miss <- display_ids %in% only_miss_ids
 
       labels <- unname(lapply(seq_along(display_ids), function(i) {
         pid <- display_ids[i]
@@ -588,7 +606,24 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
           pid
         )
 
-        if (is_no_ctas[i]) {
+        if (is_only_miss[i]) {
+          parts <- c(parts, list(
+            shiny::tags$span(
+              title = "Only missingness ratio available for this field",
+              shiny::icon("bug", class = "ms-1",
+                          style = "color:#b58fe0;")
+            )
+          ))
+          if (n_miss[i] > 0) {
+            parts <- c(parts, list(
+              shiny::tags$span(
+                class = "badge ms-1",
+                style = "background-color:#e0d4f7;color:#4b0082;",
+                n_miss[i]
+              )
+            ))
+          }
+        } else if (is_no_ctas[i]) {
           parts <- c(parts, list(
             shiny::tags$span(
               title = "No CTAS results available for this field",
@@ -688,18 +723,47 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     } # nocov end
 
     # -- Regular score table (pill tab 1) --------------------------------------
+
     output$score_table_regular <- DT::renderDataTable({
       scores_display <- rctv_scores_regular()
-      shiny::validate(shiny::need(
-        !is.null(scores_display) && nrow(scores_display) > 0,
-        "No outlier scores available (too few timepoints for ctas to compute features)."
-      ))
+      shiny::req(scores_display, nrow(scores_display) > 0)
       thresh <- input$thresh %||% 1.3
       sel_sites <- rctv_selected_sites()
       render_score_dt(scores_display, thresh, selected_sites = sel_sites)
     })
 
+    # Consolidated notice shown next to the linkage radio.
+    output$field_notice <- shiny::renderUI({
+      sel <- input$selected_param
+      if (is.null(sel)) return(NULL)
+      lookup <- rctv_param_lookup()
+      match_row <- lookup$display_id == sel
+      if (!any(match_row)) return(NULL)
+
+      if (sel %in% param_only_miss()) {
+        return(shiny::tags$div(
+          class = "alert py-1 px-2 mb-0",
+          style = "font-size:0.9em;background-color:#e0d4f7;color:#4b0082;",
+          shiny::icon("circle-info", class = "me-1"),
+          "Only missingness ratio available"
+        ))
+      }
+
+      scores_reg <- rctv_scores_regular()
+      if (is.null(scores_reg) || nrow(scores_reg) == 0) {
+        return(shiny::tags$div(
+          class = "alert alert-warning py-1 px-2 mb-0",
+          style = "font-size:0.9em;",
+          shiny::icon("triangle-exclamation", class = "me-1"),
+          "No outlier scores available (too few timepoints for ctas to compute features)."
+        ))
+      }
+
+      NULL
+    })
+
     # -- Missingness score table (pill tab 2) ----------------------------------
+
     rctv_scores_miss <- shiny::reactive({
       res <- flt_ctas_results()
       shiny::req(res)
@@ -840,8 +904,16 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       rv_dt_param_miss(input$selected_param)
     }) # nocov end
 
+    # Suppress the tab->linkage sync when we programmatically switch tabs
+    # in response to a field selection change.
+    skip_tab_sync <- shiny::reactiveVal(FALSE)
+
     # Sync linkage radio with the score-table pill tab click.
     shiny::observeEvent(input$score_tab, { # nocov start
+      if (isTRUE(skip_tab_sync())) {
+        skip_tab_sync(FALSE)
+        return()
+      }
       new_mode <- if (identical(input$score_tab, "Missingness Scores")) {
         "missingness"
       } else {
@@ -851,6 +923,41 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         shiny::updateRadioButtons(session, "linkage_mode", selected = new_mode)
       }
     }, ignoreInit = TRUE) # nocov end
+
+    # Auto-configure tab + linkage when the user picks a field:
+    #   regular outliers  -> Regular tab, linkage = regular
+    #   only miss outliers -> Missingness tab, linkage = missingness
+    #   otherwise (bug or no outliers) -> Regular tab, linkage = none
+    shiny::observeEvent(input$selected_param, { # nocov start
+      sel <- input$selected_param
+      if (is.null(sel)) return()
+
+      stats_reg <- param_outliers_regular()
+      stats_miss <- param_outliers_missing()
+      n_reg <- stats_reg$n_outlier_sites[match(sel, stats_reg$display_id)]
+      if (length(n_reg) == 0 || is.na(n_reg)) n_reg <- 0L
+      n_miss <- stats_miss$n_outlier_sites[match(sel, stats_miss$display_id)]
+      if (length(n_miss) == 0 || is.na(n_miss)) n_miss <- 0L
+
+      if (n_reg > 0) {
+        new_mode <- "regular"
+        new_tab <- "Regular Scores"
+      } else if (n_miss > 0) {
+        new_mode <- "missingness"
+        new_tab <- "Missingness Scores"
+      } else {
+        new_mode <- "none"
+        new_tab <- "Regular Scores"
+      }
+
+      if (!identical(input$score_tab, new_tab)) {
+        skip_tab_sync(TRUE)
+        bslib::nav_select(id = "score_tab", selected = new_tab, session = session)
+      }
+      if (!identical(input$linkage_mode, new_mode)) {
+        shiny::updateRadioButtons(session, "linkage_mode", selected = new_mode)
+      }
+    }) # nocov end
 
     rctv_plot_sites <- shiny::reactive({
       mode <- input$linkage_mode %||% "regular"
@@ -951,10 +1058,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
                                        untransformed = untransformed,
                                        plot_type = plot_type,
                                        sites = plot_sites)
-      shiny::validate(shiny::need(
-        nrow(ts_data) > 0,
-        "No outlier site data to display (no sites exceed the threshold for this parameter)."
-      ))
+      shiny::req(nrow(ts_data) > 0)
 
       # Hide parameter_id, parameter_name, and any extra pass-through columns
       # from the untransformed upload by default; users can toggle them on
