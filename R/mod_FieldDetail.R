@@ -42,11 +42,41 @@ mod_FieldDetail_ui <- function(id) {
     ),
     shiny::tags$div(
       style = "height:calc(100vh - 56px);overflow-y:auto;overflow-x:hidden;padding-right:4px;",
-      shiny::h4(shiny::textOutput(ns("plot_title"))),
-      shiny::h5(shiny::textOutput(ns("plot_subtitle"))),
+      shiny::fluidRow(
+        shiny::column(
+          9,
+          shiny::h4(shiny::textOutput(ns("plot_title"))),
+          shiny::h5(shiny::textOutput(ns("plot_subtitle")))
+        ),
+        shiny::column(
+          3,
+          shiny::radioButtons(
+            ns("linkage_mode"),
+            label = "Link plot & source data to:",
+            choices = c("Regular Scores (default)" = "regular",
+                        "Missingness Scores" = "missingness",
+                        "None" = "none"),
+            selected = "regular",
+            inline = FALSE
+          )
+        )
+      ),
       bslib::navset_pill(
-        bslib::nav_panel("Regular Scores", DT::dataTableOutput(ns("score_table_regular"))),
-        bslib::nav_panel("Missingness Scores", DT::dataTableOutput(ns("score_table_miss")))
+        id = ns("score_tab"),
+        bslib::nav_panel(
+          "Regular Scores",
+          shiny::tags$div(
+            style = "min-height:380px;",
+            DT::dataTableOutput(ns("score_table_regular"))
+          )
+        ),
+        bslib::nav_panel(
+          "Missingness Scores",
+          shiny::tags$div(
+            style = "min-height:380px;",
+            DT::dataTableOutput(ns("score_table_miss"))
+          )
+        )
       ),
       shiny::hr(),
       shiny::fluidRow(
@@ -431,12 +461,14 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       splits$regular
     }
 
-    param_outliers <- shiny::reactive({
+    # Helper: count outlier sites per field, restricted to either the
+    # regular (non-ratio_missing) or the ratio_missing parameter_ids.
+    compute_outliers <- function(include = c("regular", "missing")) {
+      include <- match.arg(include)
       df <- rctv_measures_feat()
       shiny::req(df)
       lookup <- rctv_param_lookup()
       thresh <- input$thresh %||% 1.3
-      include_miss <- input$include_miss %||% TRUE
       sel_sites <- rctv_selected_sites()
 
       pid_map <- data.frame(
@@ -445,12 +477,21 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         stringsAsFactors = FALSE
       )
 
-      if (!include_miss) {
-        miss_pids <- df |>
-          dplyr::filter(.data$parameter_category_3 == "ratio_missing") |>
-          dplyr::distinct(.data$parameter_id) |>
-          dplyr::pull(.data$parameter_id)
-        pid_map <- pid_map[!pid_map$parameter_id %in% miss_pids, , drop = FALSE]
+      miss_pids <- df |>
+        dplyr::filter(.data$parameter_category_3 == "ratio_missing") |>
+        dplyr::distinct(.data$parameter_id) |>
+        dplyr::pull(.data$parameter_id)
+
+      pid_map <- if (include == "missing") {
+        pid_map[pid_map$parameter_id %in% miss_pids, , drop = FALSE]
+      } else {
+        pid_map[!pid_map$parameter_id %in% miss_pids, , drop = FALSE]
+      }
+
+      if (nrow(pid_map) == 0) {
+        return(data.frame(display_id = character(),
+                          n_outlier_sites = integer(),
+                          stringsAsFactors = FALSE))
       }
 
       site_scores <- df |>
@@ -458,7 +499,6 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         dplyr::distinct(.data$site, .data$parameter_id, .data$max_score) |>
         dplyr::left_join(pid_map, by = "parameter_id")
 
-      # When sites are selected globally, only count outliers among those sites
       if (!is.null(sel_sites) && length(sel_sites) > 0) {
         site_scores <- site_scores |>
           dplyr::filter(.data$site %in% .env$sel_sites)
@@ -472,35 +512,70 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         dplyr::summarise(
           n_outlier_sites = sum(.data$max_score > .env$thresh, na.rm = TRUE),
           .by = "display_id"
-        ) |>
-        dplyr::arrange(dplyr::desc(.data$n_outlier_sites))
+        )
+    }
+
+    param_outliers_regular <- shiny::reactive(compute_outliers("regular"))
+    param_outliers_missing <- shiny::reactive(compute_outliers("missing"))
+
+    # Fields whose parameter_ids have no rows in the ctas results
+    param_no_ctas <- shiny::reactive({
+      res <- flt_ctas_results()
+      shiny::req(res)
+      lookup <- rctv_param_lookup()
+      ctas_pids <- unique(scores_with_parameter_id(res)$parameter_id)
+      has_ctas <- vapply(lookup$parameter_ids, function(pids) {
+        any(pids %in% ctas_pids)
+      }, logical(1))
+      lookup$display_id[!has_ctas]
     })
 
     output$param_list <- shiny::renderUI({
-      stats <- param_outliers()
-      shiny::req(stats)
       lookup <- rctv_param_lookup()
+      shiny::req(lookup)
+      stats_reg <- param_outliers_regular()
+      include_miss <- input$include_miss %||% TRUE
+      stats_miss <- if (include_miss) param_outliers_missing() else NULL
+      no_ctas_ids <- param_no_ctas()
+
+      display_ids <- lookup$display_id
+      n_reg <- stats_reg$n_outlier_sites[match(display_ids, stats_reg$display_id)]
+      n_reg[is.na(n_reg)] <- 0L
+      n_miss <- if (is.null(stats_miss)) {
+        rep(0L, length(display_ids))
+      } else {
+        m <- stats_miss$n_outlier_sites[match(display_ids, stats_miss$display_id)]
+        m[is.na(m)] <- 0L
+        m
+      }
 
       # Apply free-text filter
       filter_text <- input$param_filter %||% ""
       if (nzchar(filter_text)) {
-        keep <- grepl(filter_text, stats$display_id, ignore.case = TRUE)
-        stats <- stats[keep, , drop = FALSE]
+        keep <- grepl(filter_text, display_ids, ignore.case = TRUE)
+        display_ids <- display_ids[keep]
+        n_reg <- n_reg[keep]
+        n_miss <- n_miss[keep]
       }
-      if (nrow(stats) == 0) {
+      if (length(display_ids) == 0) {
         return(shiny::tags$p(class = "text-muted", "No matching fields"))
       }
 
       # Apply sort
       sort_mode <- input$param_sort %||% "outliers"
-      if (sort_mode == "alpha") {
-        stats <- stats[order(stats$display_id), , drop = FALSE]
+      ord <- if (sort_mode == "alpha") {
+        order(display_ids)
+      } else {
+        order(-(n_reg + n_miss), display_ids)
       }
+      display_ids <- display_ids[ord]
+      n_reg <- n_reg[ord]
+      n_miss <- n_miss[ord]
 
-      labels <- unname(lapply(stats$display_id, function(pid) {
-        n_out <- stats$n_outlier_sites[stats$display_id == pid]
-        badge_class <- if (n_out > 0) "badge bg-warning text-dark ms-1" else "badge bg-light text-muted ms-1"
+      is_no_ctas <- display_ids %in% no_ctas_ids
 
+      labels <- unname(lapply(seq_along(display_ids), function(i) {
+        pid <- display_ids[i]
         row_idx <- which(lookup$display_id == pid)
         icon_name <- if (length(row_idx) == 1) {
           plot_type_icon(lookup$plot_type[row_idx], lookup$cat3_values[[row_idx]])
@@ -508,19 +583,44 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
           "chart-line" # nocov
         }
 
-        htmltools::tagList(
+        parts <- list(
           shiny::icon(icon_name, class = "text-muted me-1"),
-          pid,
-          shiny::tags$span(class = badge_class, n_out)
+          pid
         )
+
+        if (is_no_ctas[i]) {
+          parts <- c(parts, list(
+            shiny::tags$span(
+              title = "No CTAS results available for this field",
+              shiny::icon("bug", class = "text-muted ms-1")
+            )
+          ))
+        } else {
+          if (n_reg[i] > 0) {
+            parts <- c(parts, list(
+              shiny::tags$span(class = "badge bg-warning text-dark ms-1", n_reg[i])
+            ))
+          }
+          if (n_miss[i] > 0) {
+            parts <- c(parts, list(
+              shiny::tags$span(
+                class = "badge ms-1",
+                style = "background-color:#e0d4f7;color:#4b0082;",
+                n_miss[i]
+              )
+            ))
+          }
+        }
+
+        do.call(htmltools::tagList, parts)
       }))
 
       shiny::radioButtons(
         ns("selected_param"),
         label = NULL,
         choiceNames = labels,
-        choiceValues = stats$display_id,
-        selected = stats$display_id[1]
+        choiceValues = display_ids,
+        selected = display_ids[1]
       )
     })
 
@@ -600,25 +700,36 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     })
 
     # -- Missingness score table (pill tab 2) ----------------------------------
+    rctv_scores_miss <- shiny::reactive({
+      res <- flt_ctas_results()
+      shiny::req(res)
+      param_ids <- get_param_ids()
+      df <- rctv_measures_feat()
+      feats <- get_selected_features()
+      splits <- split_param_ids(param_ids, df)
+      if (length(splits$missingness) == 0) return(NULL)
+      scores_display <- prepare_score_table_multi(res, splits$missingness,
+                                                  features = feats)
+      if (is.null(scores_display) || nrow(scores_display) == 0) return(NULL)
+      scores_display
+    })
+
     output$score_table_miss <- DT::renderDataTable({
       res <- flt_ctas_results()
       shiny::req(res)
       param_ids <- get_param_ids()
       df <- rctv_measures_feat()
-      thresh <- input$thresh %||% 1.3
-      feats <- get_selected_features()
-
       splits <- split_param_ids(param_ids, df)
       shiny::validate(shiny::need(
         length(splits$missingness) > 0,
         "No missingness parameters for this field."
       ))
-      scores_display <- prepare_score_table_multi(res, splits$missingness,
-                                                  features = feats)
+      scores_display <- rctv_scores_miss()
       shiny::validate(shiny::need(
-        nrow(scores_display) > 0,
+        !is.null(scores_display) && nrow(scores_display) > 0,
         "No missingness scores available (too few timepoints for ctas to compute features)."
       ))
+      thresh <- input$thresh %||% 1.3
       render_score_dt(scores_display, thresh,
                       selected_sites = rctv_selected_sites())
     })
@@ -711,23 +822,67 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     })
 
     # -- Timeseries / categorical / bar plot -----------------------------------
-    # Track which parameter the DT's rows_current belongs to, so we can
+    # Track which parameter each DT's rows_current belongs to, so we can
     # ignore stale row indices after the user switches fields.
     rv_dt_param <- shiny::reactiveVal(NULL)
+    rv_dt_param_miss <- shiny::reactiveVal(NULL)
 
     shiny::observeEvent(input$selected_param, { # nocov start
       rv_dt_param(NULL)
+      rv_dt_param_miss(NULL)
     }) # nocov end
 
     shiny::observeEvent(input$score_table_regular_rows_current, { # nocov start
       rv_dt_param(input$selected_param)
     }) # nocov end
 
+    shiny::observeEvent(input$score_table_miss_rows_current, { # nocov start
+      rv_dt_param_miss(input$selected_param)
+    }) # nocov end
+
+    # Sync linkage radio with the score-table pill tab click.
+    shiny::observeEvent(input$score_tab, { # nocov start
+      new_mode <- if (identical(input$score_tab, "Missingness Scores")) {
+        "missingness"
+      } else {
+        "regular"
+      }
+      if (!identical(input$linkage_mode, new_mode)) {
+        shiny::updateRadioButtons(session, "linkage_mode", selected = new_mode)
+      }
+    }, ignoreInit = TRUE) # nocov end
+
     rctv_plot_sites <- shiny::reactive({
+      mode <- input$linkage_mode %||% "regular"
+
+      if (mode == "none") {
+        df <- rctv_measures_feat()
+        shiny::req(df, input$selected_param)
+        param_ids <- get_param_ids()
+        param_ids <- filter_param_ids(param_ids)
+        if (length(param_ids) == 0) return(NULL)
+        sites <- unique(df$site[df$parameter_id %in% param_ids])
+        if (length(sites) == 0) return(NULL)
+        return(sites)
+      }
+
+      if (mode == "missingness") {
+        scores <- rctv_scores_miss()
+        if (is.null(scores) || nrow(scores) == 0) return(NULL)
+        row_idx <- input$score_table_miss_rows_current
+        dt_fresh <- identical(rv_dt_param_miss(), input$selected_param)
+        if (!dt_fresh || is.null(row_idx) || length(row_idx) == 0) {
+          return(NULL) # nocov
+        }
+        sites <- scores$site[row_idx]
+        if (length(sites) > 24) sites <- sites[seq_len(24)]
+        return(sites)
+      }
+
+      # default: regular
       scores <- rctv_scores_regular()
       if (is.null(scores) || nrow(scores) == 0) return(NULL)
 
-      # Only use DT rows if they belong to the current parameter
       row_idx <- input$score_table_regular_rows_current
       dt_fresh <- identical(rv_dt_param(), input$selected_param)
 

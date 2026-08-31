@@ -275,12 +275,23 @@ prepare_ts_data_multi <- function(measures, parameter_ids, thresh,
       dplyr::pull(.data$site)
   }
 
+  # Drop ratio_missing rows only when a real-measurement sibling is present
+  # in `parameter_ids`; pure-missingness fields (e.g. ANISO, KETONES) would
+  # otherwise be filtered to zero rows.
+  has_regular_sibling <- measures |>
+    dplyr::filter(.data$parameter_id %in% .env$parameter_ids,
+                  .data$parameter_category_3 != "ratio_missing") |>
+    nrow() > 0
+
   filtered <- measures |>
     dplyr::filter(
       .data$parameter_id %in% .env$parameter_ids,
-      .data$site %in% .env$outlier_sites,
-      .data$parameter_category_3 != "ratio_missing"
+      .data$site %in% .env$outlier_sites
     )
+  if (has_regular_sibling) {
+    filtered <- filtered |>
+      dplyr::filter(.data$parameter_category_3 != "ratio_missing")
+  }
 
   is_cat <- plot_type %in% c("categorical", "bar")
 
