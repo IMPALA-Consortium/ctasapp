@@ -1,5 +1,12 @@
 # Changelog
 
+## ctasapp 0.4.0.900
+
+- control linkage between score tables, plots and data tables with radio
+  button
+- clear missingness outlier indication
+- clear failure and bug reporting
+
 ## ctasapp 0.4.0
 
 - standard config renamed to ctasapp.yml
