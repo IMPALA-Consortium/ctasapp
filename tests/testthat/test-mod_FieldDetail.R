@@ -146,7 +146,7 @@ test_that("mod_FieldDetail_server renders outputs with ctas sample", {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
       session$flushReact()
 
-      stats <- param_outliers()
+      stats <- param_outliers_regular()
       expect_s3_class(stats, "data.frame")
       expect_true("display_id" %in% names(stats))
       expect_true("n_outlier_sites" %in% names(stats))
@@ -170,11 +170,11 @@ test_that("mod_FieldDetail_server param_outliers reacts to threshold changes", {
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
-      stats_low <- param_outliers()
+      stats_low <- param_outliers_regular()
       n_low <- sum(stats_low$n_outlier_sites)
 
       session$setInputs(thresh = 99999)
-      stats_high <- param_outliers()
+      stats_high <- param_outliers_regular()
       n_high <- sum(stats_high$n_outlier_sites)
 
       expect_true(n_low >= n_high)
@@ -200,7 +200,7 @@ test_that("mod_FieldDetail_server handles SDTM sample data", {
       expect_true("categorical" %in% lookup$plot_type)
       expect_true("bar" %in% lookup$plot_type)
 
-      stats <- param_outliers()
+      stats <- param_outliers_regular()
       expect_true(nrow(stats) > 0)
     }
   )
@@ -354,7 +354,7 @@ test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM
 })
 
 
-test_that("mod_FieldDetail_server include_miss=FALSE filters outlier counts", {
+test_that("mod_FieldDetail_server splits regular and missingness outlier counts", {
   m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
 
   shiny::testServer(
@@ -365,15 +365,19 @@ test_that("mod_FieldDetail_server include_miss=FALSE filters outlier counts", {
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
-      stats_with <- param_outliers()
+      stats_reg <- param_outliers_regular()
+      stats_miss <- param_outliers_missing()
 
+      # Regular counts must not include ratio_missing parameter contributions
+      expect_s3_class(stats_reg, "data.frame")
+      expect_s3_class(stats_miss, "data.frame")
+      expect_true(all(stats_reg$n_outlier_sites >= 0))
+      expect_true(all(stats_miss$n_outlier_sites >= 0))
+
+      # Regular reactive must NOT react to include_miss
       session$setInputs(include_miss = FALSE)
-      stats_without <- param_outliers()
-
-      # Missingness parameters contribute to scores, so disabling should
-      # change (or keep equal) the outlier counts
-      expect_true(nrow(stats_with) > 0)
-      expect_true(nrow(stats_without) > 0)
+      stats_reg_off <- param_outliers_regular()
+      expect_equal(stats_reg_off, stats_reg)
     }
   )
 })
@@ -391,10 +395,10 @@ test_that("mod_FieldDetail_server applies global site filter in param_outliers",
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
-      all_stats <- param_outliers()
+      all_stats <- param_outliers_regular()
 
       rv_sites(unique(m$site)[1])
-      filtered_stats <- param_outliers()
+      filtered_stats <- param_outliers_regular()
 
       expect_true(sum(filtered_stats$n_outlier_sites) <= sum(all_stats$n_outlier_sites))
     }
@@ -792,7 +796,7 @@ test_that("plot_title shows field name from parameter_name", {
                         study_filter = "STUDY-001")
       session$flushReact()
 
-      stats <- param_outliers()
+      stats <- param_outliers_regular()
       session$setInputs(selected_param = stats$display_id[1])
       session$flushReact()
 
@@ -819,7 +823,7 @@ test_that("plot_title works without study filter", {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
       session$flushReact()
 
-      stats <- param_outliers()
+      stats <- param_outliers_regular()
       session$setInputs(selected_param = stats$display_id[1])
 
       title <- output$plot_title
@@ -918,6 +922,123 @@ test_that("flt_untransformed filters by study column directly when present", {
       filtered_ut <- flt_untransformed()
       expect_true(all(filtered_ut$study == "ST-A"))
       expect_equal(nrow(filtered_ut), 0L)
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server linkage_mode='none' returns all field sites uncapped", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE,
+                        linkage_mode = "none")
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      sel_id <- lookup$display_id[1]
+      session$setInputs(selected_param = sel_id)
+
+      sites <- rctv_plot_sites()
+      pids <- lookup$parameter_ids[[1]]
+      expected <- unique(m$site[m$parameter_id %in% pids])
+      expect_setequal(sites, expected)
+      expect_equal(length(sites), length(expected))
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server linkage_mode='missingness' uses missingness DT rows", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE,
+                        linkage_mode = "missingness")
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      splits_ok <- vapply(lookup$parameter_ids, function(pids) {
+        s <- split_param_ids(pids, m)
+        length(s$missingness) > 0
+      }, logical(1))
+      shiny::req(any(splits_ok))
+      sel_id <- lookup$display_id[which(splits_ok)[1]]
+      session$setInputs(selected_param = sel_id)
+      session$flushReact()
+
+      scores_miss <- rctv_scores_miss()
+      shiny::req(!is.null(scores_miss), nrow(scores_miss) > 0)
+      n_take <- min(3L, nrow(scores_miss))
+      session$setInputs(
+        score_table_miss_rows_current = seq_len(n_take)
+      )
+      session$flushReact()
+
+      sites <- rctv_plot_sites()
+      expect_equal(sites, scores_miss$site[seq_len(n_take)])
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server param_no_ctas flags fields without ctas results", {
+  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+
+  # Empty site_scores => every field is treated as lacking ctas results.
+  bogus_res <- sample_ctas_results
+  bogus_res$site_scores <- bogus_res$site_scores[integer(0), , drop = FALSE]
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(bogus_res)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      session$flushReact()
+
+      no_ctas <- param_no_ctas()
+      lookup <- rctv_param_lookup()
+      expect_setequal(no_ctas, lookup$display_id)
+    }
+  )
+})
+
+
+test_that("mod_FieldDetail_server field_notice renders 'Only missingness' for pure-miss field", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      session$flushReact()
+
+      only_miss_ids <- param_only_miss()
+      shiny::req(length(only_miss_ids) > 0)
+      session$setInputs(selected_param = only_miss_ids[1])
+      session$flushReact()
+
+      notice <- output$field_notice
+      expect_true(any(grepl("Only missingness", as.character(notice))))
     }
   )
 })
