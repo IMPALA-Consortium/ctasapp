@@ -33,6 +33,7 @@ ctas_results <- process_a_study(
 
 sample_ctas_data <- ctas_data[c("data", "subjects", "parameters")]
 sample_ctas_data$queries <- simulate_query_data(sample_ctas_data, seed = 456)
+sample_ctas_data$pd <- simulate_pd_data(sample_ctas_data, seed = 654)
 sample_ctas_results <- ctas_results
 
 usethis::use_data(sample_ctas_data, overwrite = TRUE)

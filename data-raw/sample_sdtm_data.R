@@ -24,6 +24,7 @@ bmi <- Input_BMI(modified$dm, vs)
 
 sample_sdtm_data <- combine_ctas_input(labs, vs_input, rs, bmi)
 sample_sdtm_data$queries <- simulate_query_data(sample_sdtm_data, seed = 123)
+sample_sdtm_data$pd <- simulate_pd_data(sample_sdtm_data, seed = 321)
 
 feats <- paste(
   c(

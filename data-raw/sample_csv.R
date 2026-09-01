@@ -71,6 +71,11 @@ queries_csv <- dplyr::bind_rows(
   sdtm_queries
 )
 
+pd_csv <- dplyr::bind_rows(
+  ctas_d$pd,
+  sdtm_d$pd
+)
+
 # -- Write CSVs -----------------------------------------------------------------
 utils::write.csv(results_csv, "inst/extdata/results.csv", row.names = FALSE)
 utils::write.csv(input_csv, "inst/extdata/input.csv", row.names = FALSE)
@@ -82,6 +87,10 @@ if (!is.null(untransformed_csv) && nrow(untransformed_csv) > 0) {
 
 if (!is.null(queries_csv) && nrow(queries_csv) > 0) {
   utils::write.csv(queries_csv, "inst/extdata/queries.csv", row.names = FALSE)
+}
+
+if (!is.null(pd_csv) && nrow(pd_csv) > 0) {
+  utils::write.csv(pd_csv, "inst/extdata/pd.csv", row.names = FALSE)
 }
 
 message("Wrote CSV test fixtures to inst/extdata/")

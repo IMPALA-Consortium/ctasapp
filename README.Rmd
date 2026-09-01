@@ -107,6 +107,7 @@ embedded:
   input: data/input.parquet
   untransformed: data/untransformed.parquet  # optional
   queries: data/queries.parquet              # optional
+  pd: data/pd.parquet                        # optional (protocol deviations)
 ```
 
 Any key you omit falls back to the built-in default.

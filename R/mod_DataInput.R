@@ -171,6 +171,24 @@ mod_DataInput_ui <- function(id) {
               shiny::tags$code("query_answer"), ", ",
               shiny::tags$code("value_first_entry"), ", ",
               shiny::tags$code("value_now"), "."
+            ),
+            shiny::tags$h6(
+              shiny::tags$strong("5. Protocol Deviations"), " (optional)"
+            ),
+            shiny::tags$p(
+              "SDTM DV-style records shown in the Protocol Deviations ",
+              "tab of Field Detail. Deviations link at site level only. ",
+              "Required column: ",
+              shiny::tags$code("site"), ". ",
+              "Recommended columns: ",
+              shiny::tags$code("subject_id"), ", ",
+              shiny::tags$code("dv_seq"), ", ",
+              shiny::tags$code("dv_term"), ", ",
+              shiny::tags$code("dv_decod"), ", ",
+              shiny::tags$code("dv_cat"), ", ",
+              shiny::tags$code("dv_scat"), ", ",
+              shiny::tags$code("dv_start_date"), ", ",
+              shiny::tags$code("dv_end_date"), "."
             )
           )
         ),
@@ -183,6 +201,9 @@ mod_DataInput_ui <- function(id) {
                          "Untransformed data (optional)",
                          accept = c(".csv", ".parquet", ".rda", ".rdata")),
         shiny::fileInput(ns("file_queries"), "Query data (optional)",
+                         accept = c(".csv", ".parquet", ".rda", ".rdata")),
+        shiny::fileInput(ns("file_pd"),
+                         "Protocol Deviations (optional)",
                          accept = c(".csv", ".parquet", ".rda", ".rdata"))
       ),
       shiny::uiOutput(ns("study_selector")),
@@ -201,7 +222,7 @@ mod_DataInput_ui <- function(id) {
 #' Data Input Module - Server
 #'
 #' Returns a named list of reactives: `measures`, `ctas_results`,
-#' `untransformed`, `queries`, `dataset_label`, `studies`, and
+#' `untransformed`, `queries`, `pd`, `dataset_label`, `studies`, and
 #' `selected_study`. When the uploaded results file contains a `study`
 #' column with more than one unique value, a study selector is shown on
 #' the Data tab and the chosen study is used to filter both the results
@@ -217,6 +238,7 @@ mod_DataInput_server <- function(id) {
     rv_ctas_results <- shiny::reactiveVal(NULL)
     rv_untransformed <- shiny::reactiveVal(NULL)
     rv_queries <- shiny::reactiveVal(NULL)
+    rv_pd <- shiny::reactiveVal(NULL)
     rv_dataset_label <- shiny::reactiveVal(NULL)
     rv_studies <- shiny::reactiveVal(NULL)
     rv_available_studies <- shiny::reactiveVal(NULL)
@@ -249,7 +271,8 @@ mod_DataInput_server <- function(id) {
       labels <- list(
         results = "Results", input = "Input",
         untransformed = "Untransformed (optional)",
-        queries = "Queries (optional)"
+        queries = "Queries (optional)",
+        pd = "Protocol Deviations (optional)"
       )
       rows <- lapply(names(labels), function(key) {
         p <- paths[[key]]
@@ -349,6 +372,7 @@ mod_DataInput_server <- function(id) {
     process_loaded_frames <- function(results_df, input_df,             # nocov start
                                       untransformed_df = NULL,
                                       queries_df = NULL,
+                                      pd_df = NULL,
                                       source_label = "upload") {
       shiny::setProgress(0.2, detail = "Validating files")
       ctas_log("Validating ", source_label, " files...")
@@ -360,6 +384,9 @@ mod_DataInput_server <- function(id) {
       }
       if (!is.null(queries_df)) {
         all_errs <- c(all_errs, validate_upload_queries(queries_df))
+      }
+      if (!is.null(pd_df)) {
+        all_errs <- c(all_errs, validate_upload_pd(pd_df))
       }
       if (length(all_errs) > 0) {
         ctas_log("Validation failed: ", paste(all_errs, collapse = "; "))
@@ -445,7 +472,7 @@ mod_DataInput_server <- function(id) {
       ctas_log("Reconstructing from ", source_label, "...")
       reconstructed <- tryCatch(
         reconstruct_from_upload(
-          input_df, results_df, untransformed_df, queries_df
+          input_df, results_df, untransformed_df, queries_df, pd_df
         ),
         error = function(e) { e }
       )
@@ -497,7 +524,7 @@ mod_DataInput_server <- function(id) {
         # Check that all configured files exist on disk; surface missing
         # paths in a single error so operators can fix the deployment.
         missing <- character()
-        for (key in c("results", "input", "untransformed", "queries")) {
+        for (key in c("results", "input", "untransformed", "queries", "pd")) {
           p <- paths[[key]]
           if (!is.null(p) && nzchar(p) && !file.exists(p)) {
             missing <- c(missing, paste0(key, ": ", p))
@@ -557,6 +584,13 @@ mod_DataInput_server <- function(id) {
             error = function(e) { NULL }
           )
         }
+        pd_df <- NULL
+        if (!is.null(paths$pd) && nzchar(paths$pd)) {
+          pd_df <- tryCatch(
+            read_upload_file(paths$pd, basename(paths$pd)),
+            error = function(e) { NULL }
+          )
+        }
 
         # -- Filter to selected study when multi-study data ------------------
         upload_study <- input$upload_study
@@ -574,7 +608,7 @@ mod_DataInput_server <- function(id) {
         }
 
         reconstructed <- process_loaded_frames(
-          results_df, input_df, untransformed_df, queries_df,
+          results_df, input_df, untransformed_df, queries_df, pd_df,
           source_label = "embedded"
         )
         if (is.null(reconstructed)) return()
@@ -679,8 +713,18 @@ mod_DataInput_server <- function(id) {
           )
         }
 
+        pd_file <- input$file_pd
+        pd_df <- NULL
+        if (!is.null(pd_file)) {
+          ctas_log("Reading PD file: ", pd_file$name)
+          pd_df <- tryCatch(
+            read_upload_file(pd_file$datapath, pd_file$name),
+            error = function(e) { NULL }
+          )
+        }
+
         reconstructed <- process_loaded_frames(
-          results_df, input_df, untransformed_df, queries_df,
+          results_df, input_df, untransformed_df, queries_df, pd_df,
           source_label = "upload"
         )
         if (is.null(reconstructed)) return()
@@ -714,6 +758,7 @@ mod_DataInput_server <- function(id) {
       rv_ctas_results(ctas_results)
       rv_untransformed(ctas_data$untransformed)
       rv_queries(ctas_data$queries)
+      rv_pd(ctas_data$pd)
       rv_dataset_label(label)
 
       studies <- if ("study" %in% names(ctas_data$subjects)) {
@@ -760,6 +805,7 @@ mod_DataInput_server <- function(id) {
       ctas_results = rv_ctas_results,
       untransformed = rv_untransformed,
       queries = rv_queries,
+      pd = rv_pd,
       dataset_label = rv_dataset_label,
       studies = rv_studies,
       selected_study = rv_selected_study

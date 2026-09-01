@@ -8,7 +8,8 @@ reconstruct_from_upload(
   input_df,
   results_df,
   untransformed_df = NULL,
-  queries_df = NULL
+  queries_df = NULL,
+  pd_df = NULL
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ reconstruct_from_upload(
 \item{untransformed_df}{Optional data frame from the untransformed upload.}
 
 \item{queries_df}{Optional data frame from the queries upload.}
+
+\item{pd_df}{Optional data frame from the protocol deviations upload.}
 }
 \value{
 A named list with \code{ctas_data} and \code{ctas_results}.

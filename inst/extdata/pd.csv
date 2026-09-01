@@ -1,0 +1,135 @@
+"site","subject_id","dv_seq","dv_term","dv_decod","dv_cat","dv_scat","dv_start_date","dv_end_date"
+"AAA","2",1,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2024-09-04,2024-09-11
+"AAA","2",2,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-09-01,2024-09-13
+"AAB","4",1,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2024-03-12,2024-03-23
+"AAB","4",2,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-04-04,2023-04-10
+"AAB","4",3,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2023-07-09,2023-07-20
+"AAB","4",4,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-10-08,2023-10-18
+"AAC","11",1,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2024-06-20,2024-06-27
+"AAC","12",2,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2024-10-27,2024-11-04
+"AAC","8",3,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-11-12,2024-11-23
+"AAC","11",4,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2023-09-09,2023-09-09
+"AAC","12",5,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2024-12-20,2024-12-24
+"AAD","13",1,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2023-04-10,2023-04-14
+"AAD","16",2,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-10-18,2023-10-22
+"AAE","23",1,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-07-21,2024-08-01
+"AAE","20",2,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2024-10-05,2024-10-06
+"AAF","26",1,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2023-01-15,2023-01-23
+"AAF","24",2,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2023-01-28,2023-02-03
+"AAF","24",3,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2024-11-21,2024-11-21
+"AAG","33",1,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2024-11-24,2024-11-30
+"AAG","34",2,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2024-07-27,2024-07-30
+"AAG","30",3,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-07-20,2024-07-27
+"AAG","34",4,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2023-05-03,2023-05-12
+"AAG","34",5,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-08-16,2024-08-28
+"ABA","41",1,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-04-10,2023-04-12
+"ABA","44",2,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-08-29,2023-09-11
+"ABB","49",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-03-28,2024-04-01
+"BAA","53",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-07-08,2024-07-18
+"BAB","59",1,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-01-08,2023-01-21
+"BAB","61",2,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2023-11-14,2023-11-22
+"BAC","68",1,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-06-18,2023-06-22
+"BAD","70",1,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2024-11-26,2024-12-07
+"BAE","75",1,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2024-07-31,2024-08-04
+"BAE","77",2,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2023-10-24,2023-11-03
+"BAE","76",3,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2024-08-31,2024-09-01
+"BAF","80",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-05-25,2024-05-29
+"BAF","78",2,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-09-15,2023-09-27
+"BAF","80",3,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-07-09,2023-07-14
+"BAF","80",4,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-10-30,2024-11-08
+"BAG","83",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-04-26,2023-05-07
+"BAG","84",2,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2023-05-20,2023-05-26
+"BAG","82",3,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2024-07-13,2024-07-24
+"BBA","86",1,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2024-04-25,2024-04-28
+"BBA","86",2,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2023-12-18,2023-12-25
+"BBA","86",3,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2024-03-01,2024-03-15
+"BBA","86",4,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-03-31,2023-04-13
+"BBA","86",5,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2024-01-05,2024-01-18
+"BBB","87",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-09-30,2024-10-01
+"BBB","90",2,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-05-11,2023-05-22
+"BBC","95",1,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2023-05-24,2023-05-25
+"BBC","97",2,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-10-18,2024-10-26
+"BBC","93",3,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-06-17,2024-06-18
+"BBC","91",4,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-12-23,2023-12-25
+"BBC","93",5,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-09-26,2023-10-01
+"BBD","101",1,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-07-16,2024-07-25
+"BBD","102",2,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-08-09,2023-08-19
+"BBD","101",3,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-05-19,2023-06-02
+"BBD","102",4,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2023-11-09,2023-11-20
+"BBE","107",1,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2023-04-13,2023-04-22
+"BBE","105",2,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2023-05-26,2023-06-09
+"BBE","105",3,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-06-03,2023-06-09
+"BBE","105",4,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-10-26,2023-11-01
+"BBF","111",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-01-03,2024-01-05
+"BBG","117",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-01-29,2024-02-02
+"BBG","113",2,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-12-15,2024-12-19
+"BBG","116",3,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2023-10-17,2023-10-31
+"BBG","114",4,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2023-03-31,2023-04-09
+"BBG","114",5,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2023-11-14,2023-11-20
+"CAA","120",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-10-26,2024-11-05
+"CAB","125",1,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2023-01-07,2023-01-16
+"CAB","127",2,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2024-08-28,2024-09-02
+"CAB","125",3,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2023-12-06,2023-12-07
+"CAB","125",4,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-03-29,2024-03-31
+"CAB","125",5,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2024-05-02,2024-05-05
+"CAC","129",1,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2024-12-07,2024-12-15
+"CAC","132",2,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-08-13,2024-08-19
+"CAC","131",3,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2023-01-13,2023-01-18
+"CAC","132",4,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2023-12-07,2023-12-21
+"CAC","133",5,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-04-03,2024-04-08
+"CAD","137",1,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-11-15,2023-11-29
+"CAE","142",1,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2024-08-02,2024-08-10
+"CBA","148",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-03-11,2024-03-25
+"CBB","150",1,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-06-11,2023-06-13
+"CBC","155",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2023-07-30,2023-08-02
+"CBC","153",2,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2024-02-28,2024-03-05
+"CBD","162",1,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2023-03-15,2023-03-25
+"CBD","164",2,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2023-06-08,2023-06-18
+"CBD","164",3,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2023-06-07,2023-06-14
+"CBD","162",4,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2024-07-03,2024-07-07
+"CBE","167",1,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2024-04-20,2024-04-23
+"CCA","177",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-05-16,2024-05-22
+"701_MISS_ALT","01-701-1415",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-07-24,2024-07-24
+"701_MISS_ALT","01-701-1118",2,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-09-30,2024-10-03
+"702","01-702-1082",1,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-08-30,2024-09-04
+"703","01-703-1299",1,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-03-24,2023-03-27
+"704_MISS_CREAT","01-704-1164",1,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-03-11,2024-03-24
+"704_MISS_CREAT","01-704-1241",2,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2023-03-22,2023-04-03
+"705","01-705-1186",1,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-03-20,2023-04-01
+"706","01-706-1049",1,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-07-21,2023-08-04
+"707","01-707-1206",1,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2023-10-02,2023-10-16
+"707","01-707-1430",2,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-09-14,2023-09-21
+"707","01-707-1430",3,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2024-10-11,2024-10-25
+"707","01-707-1206",4,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2024-05-28,2024-06-01
+"707","01-707-1206",5,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-10-05,2024-10-19
+"708_MISS_CREAT","01-708-1378",1,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-06-10,2024-06-24
+"708_MISS_CREAT","01-708-1236",2,"Baseline hemoglobin below protocol minimum","Baseline hemoglobin below protocol minimum","MAJOR","INCLUSION CRITERIA NOT MET",2023-02-25,2023-03-04
+"708_MISS_CREAT","01-708-1297",3,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2023-10-29,2023-10-29
+"709_MISS_GLUC","01-709-1238",1,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-02-11,2023-02-17
+"709_MISS_GLUC","01-709-1312",2,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2023-08-12,2023-08-24
+"710_MISS_ALT","01-710-1408",1,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-10-15,2024-10-27
+"710_MISS_ALT","01-710-1021",2,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-10-05,2023-10-07
+"710_MISS_ALT","01-710-1070",3,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2024-09-06,2024-09-10
+"711","01-711-1163",1,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-03-04,2023-03-17
+"711","01-711-1290",2,"Blood sample not collected per schedule","Blood sample not collected per schedule","MINOR","STUDY PROCEDURE NOT DONE",2023-09-27,2023-10-09
+"711","01-711-1143",3,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2023-03-04,2023-03-06
+"713","01-713-1106",1,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-04-24,2024-04-26
+"713","01-713-1141",2,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2023-05-11,2023-05-15
+"714","01-714-1288",1,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2024-04-16,2024-04-23
+"714","01-714-1288",2,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2023-09-27,2023-09-27
+"714","01-714-1288",3,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-08-20,2024-08-31
+"715","01-715-1397",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-03-04,2024-03-09
+"715","01-715-1134",2,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-02-09,2023-02-19
+"715","01-715-1155",3,"Consent form version mismatch at visit","Consent form version mismatch at visit","MAJOR","INFORMED CONSENT ISSUE",2024-05-30,2024-06-08
+"715","01-715-1225",4,"ECG not performed at required timepoint","ECG not performed at required timepoint","MINOR","STUDY PROCEDURE NOT DONE",2024-12-13,2024-12-26
+"715","01-715-1155",5,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2023-11-10,2023-11-14
+"716_MISS_GLUC","01-716-1177",1,"Reconsent not obtained after protocol amendment","Reconsent not obtained after protocol amendment","MAJOR","INFORMED CONSENT ISSUE",2024-10-22,2024-10-29
+"716_MISS_GLUC","01-716-1308",2,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-11-01,2024-11-07
+"716_MISS_GLUC","01-716-1108",3,"Subject took prohibited concomitant medication","Subject took prohibited concomitant medication","IMPORTANT","PROHIBITED CONMED",2023-09-09,2023-09-23
+"717","01-717-1446",1,"Required assessment not performed at visit","Required assessment not performed at visit","MINOR","STUDY PROCEDURE NOT DONE",2024-01-27,2024-02-01
+"717","01-717-1109",2,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2024-03-09,2024-03-13
+"717","01-717-1109",3,"Rescue medication administered outside allowed regimen","Rescue medication administered outside allowed regimen","IMPORTANT","PROHIBITED CONMED",2024-11-08,2024-11-15
+"717","01-717-1201",4,"Subject did not meet all inclusion criteria at screening","Subject did not meet all inclusion criteria at screening","MAJOR","INCLUSION CRITERIA NOT MET",2024-02-13,2024-02-16
+"717","01-717-1109",5,"Follow-up visit conducted late","Follow-up visit conducted late","MINOR","VISIT WINDOW DEVIATION",2024-12-11,2024-12-19
+"718","01-718-1427",1,"Age outside eligible window","Age outside eligible window","MAJOR","INCLUSION CRITERIA NOT MET",2023-03-06,2023-03-11
+"718","01-718-1066",2,"Visit performed outside protocol window","Visit performed outside protocol window","MINOR","VISIT WINDOW DEVIATION",2023-06-03,2023-06-09

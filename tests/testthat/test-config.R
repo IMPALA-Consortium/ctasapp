@@ -13,7 +13,7 @@ test_that("default_config returns correct structure", {
                               "query_no_change", "query_data_change"))
   expect_named(cfg$icons, c("range_normalized", "numeric", "categorical", "bar"))
   expect_named(cfg$embedded,
-               c("results", "input", "untransformed", "queries"))
+               c("results", "input", "untransformed", "queries", "pd"))
   expect_null(cfg$embedded$results)
   expect_length(cfg$colors$table, 5)
   expect_length(cfg$colors$plot, 5)

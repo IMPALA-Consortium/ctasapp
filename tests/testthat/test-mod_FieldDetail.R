@@ -779,6 +779,57 @@ test_that("mod_FieldDetail_server query_table shows message when no queries", {
   )
 })
 
+test_that("mod_FieldDetail_server pd_table renders for SDTM data", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  pd <- simulate_pd_data(sample_sdtm_data, seed = 1)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_pd = shiny::reactiveVal(pd)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      num_id <- lookup$display_id[lookup$plot_type == "numeric"][1]
+      session$setInputs(selected_param = num_id)
+
+      scores <- rctv_scores_regular()
+      session$setInputs(score_table_regular_rows_current = seq_len(nrow(scores)))
+
+      tbl <- output$pd_table
+      expect_true(!is.null(tbl))
+    }
+  )
+})
+
+test_that("mod_FieldDetail_server pd_table shows message when no PD data", {
+  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_pd = shiny::reactiveVal(NULL)
+    ),
+    {
+      session$setInputs(thresh = 0, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      num_id <- lookup$display_id[lookup$plot_type == "numeric"][1]
+      session$setInputs(selected_param = num_id)
+
+      expect_error(output$pd_table, "No protocol deviation")
+    }
+  )
+})
+
 
 test_that("plot_title shows field name from parameter_name", {
   m <- prepare_measures(sample_ctas_data, sample_ctas_results)

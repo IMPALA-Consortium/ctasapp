@@ -585,6 +585,120 @@ simulate_query_data <- function(ctas_data, seed = 123, query_frac = 0.04,
 }
 
 
+#' Simulate protocol deviation (SDTM DV) records for a ctas input dataset
+#'
+#' Generates plausible protocol deviation rows for each site in
+#' `ctas_data$subjects`. Deviations link at site level only — they are
+#' not tied to a `parameter_id`. Columns follow lowercase snake_case
+#' equivalents of the SDTM DV domain (see the CDISC SDTM Implementation
+#' Guide, DV domain).
+#'
+#' @param ctas_data A ctas input list containing a `subjects` element with
+#'   `site` and `subject_id` columns.
+#' @param seed Integer seed for reproducibility.
+#' @param pds_per_site Integer vector of length 2 giving the inclusive
+#'   min/max number of PD rows to generate per site (uniform draw).
+#' @param date_range Character vector of length 2 with the inclusive ISO
+#'   date range (`YYYY-MM-DD`) used to sample `dv_start_date`.
+#'
+#' @return A data frame with columns `site`, `subject_id`, `dv_seq`,
+#'   `dv_term`, `dv_decod`, `dv_cat`, `dv_scat`, `dv_start_date`,
+#'   `dv_end_date`.
+#' @export
+simulate_pd_data <- function(ctas_data, seed = 321,
+                             pds_per_site = c(1L, 5L),
+                             date_range = c("2023-01-01", "2024-12-31")) {
+  set.seed(seed)
+
+  subjects <- ctas_data$subjects
+  if (is.null(subjects) || nrow(subjects) == 0) {
+    return(data.frame(
+      site = character(0), subject_id = character(0),
+      dv_seq = integer(0),
+      dv_term = character(0), dv_decod = character(0),
+      dv_cat = character(0), dv_scat = character(0),
+      dv_start_date = as.Date(character(0)),
+      dv_end_date = as.Date(character(0)),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  scat_vocab <- c(
+    "INCLUSION CRITERIA NOT MET",
+    "PROHIBITED CONMED",
+    "STUDY PROCEDURE NOT DONE",
+    "VISIT WINDOW DEVIATION",
+    "INFORMED CONSENT ISSUE"
+  )
+  term_vocab <- list(
+    "INCLUSION CRITERIA NOT MET" = c(
+      "Subject did not meet all inclusion criteria at screening",
+      "Baseline hemoglobin below protocol minimum",
+      "Age outside eligible window"
+    ),
+    "PROHIBITED CONMED" = c(
+      "Subject took prohibited concomitant medication",
+      "Rescue medication administered outside allowed regimen"
+    ),
+    "STUDY PROCEDURE NOT DONE" = c(
+      "Required assessment not performed at visit",
+      "Blood sample not collected per schedule",
+      "ECG not performed at required timepoint"
+    ),
+    "VISIT WINDOW DEVIATION" = c(
+      "Visit performed outside protocol window",
+      "Follow-up visit conducted late"
+    ),
+    "INFORMED CONSENT ISSUE" = c(
+      "Reconsent not obtained after protocol amendment",
+      "Consent form version mismatch at visit"
+    )
+  )
+  cat_by_scat <- c(
+    "INCLUSION CRITERIA NOT MET" = "MAJOR",
+    "PROHIBITED CONMED"          = "IMPORTANT",
+    "STUDY PROCEDURE NOT DONE"   = "MINOR",
+    "VISIT WINDOW DEVIATION"     = "MINOR",
+    "INFORMED CONSENT ISSUE"     = "MAJOR"
+  )
+
+  sites <- unique(subjects$site)
+  sites <- sites[!is.na(sites)]
+
+  d0 <- as.Date(date_range[1])
+  d1 <- as.Date(date_range[2])
+  day_span <- as.integer(d1 - d0)
+
+  rows <- lapply(sites, function(s) {
+    subj_at_site <- unique(subjects$subject_id[subjects$site == s])
+    if (length(subj_at_site) == 0) return(NULL) # nocov
+    n_pd <- sample(seq(pds_per_site[1], pds_per_site[2]), 1L)
+    scat_i <- sample(scat_vocab, n_pd, replace = TRUE)
+    term_i <- vapply(scat_i, function(sc) {
+      sample(term_vocab[[sc]], 1L)
+    }, character(1))
+    start_offset <- sample.int(day_span, n_pd, replace = TRUE)
+    dv_start <- d0 + start_offset
+    dv_end <- dv_start + sample(0:14, n_pd, replace = TRUE)
+    data.frame(
+      site = s,
+      subject_id = sample(subj_at_site, n_pd, replace = TRUE),
+      dv_seq = seq_len(n_pd),
+      dv_term = unname(term_i),
+      dv_decod = unname(term_i),
+      dv_cat = unname(cat_by_scat[scat_i]),
+      dv_scat = scat_i,
+      dv_start_date = dv_start,
+      dv_end_date = dv_end,
+      stringsAsFactors = FALSE
+    )
+  })
+
+  do.call(rbind, rows)
+}
+
+
+
 #' Combine multiple ctas input lists
 #'
 #' Takes one or more ctas input lists (each with `data`, `subjects`,

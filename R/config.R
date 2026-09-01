@@ -56,7 +56,8 @@ default_config <- function() {
       results = NULL,
       input = NULL,
       untransformed = NULL,
-      queries = NULL
+      queries = NULL,
+      pd = NULL
     )
   )
 }
@@ -131,7 +132,7 @@ load_config <- function(path = NULL) {
     cfg$features$default <- as.character(user$features$default)
   }
   if (!is.null(user$embedded)) {
-    for (key in c("results", "input", "untransformed", "queries")) {
+    for (key in c("results", "input", "untransformed", "queries", "pd")) {
       val <- user$embedded[[key]]
       if (!is.null(val) && nzchar(val)) {
         cfg$embedded[[key]] <- resolve_config_path(as.character(val), cfg_dir)
@@ -197,7 +198,8 @@ apply_config <- function(cfg) {
 #' (i.e. neither `results` nor `input` was set).
 #'
 #' @return A named list with elements `results`, `input`, `untransformed`,
-#'   `queries` (each a character path or `NULL`), or `NULL` if disabled.
+#'   `queries`, `pd` (each a character path or `NULL`), or `NULL` if
+#'   disabled.
 #' @export
 get_embedded_paths <- function() {
   paths <- .cfg_env$embedded_paths
