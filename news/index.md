@@ -6,6 +6,11 @@
   button
 - clear missingness outlier indication
 - clear failure and bug reporting
+- new Protocol Deviations tab in Field Detail (site-level linkage) with
+  matching upload/embedded/sample workflow
+  ([`simulate_pd_data()`](https://IMPALA-Consortium.github.io/ctasapp/reference/simulate_pd_data.md),
+  [`validate_upload_pd()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_pd.md),
+  `pd` element in sample data and embedded config)
 
 ## ctasapp 0.4.0
 

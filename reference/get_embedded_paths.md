@@ -13,4 +13,5 @@ get_embedded_paths()
 ## Value
 
 A named list with elements `results`, `input`, `untransformed`,
-`queries` (each a character path or `NULL`), or `NULL` if disabled.
+`queries`, `pd` (each a character path or `NULL`), or `NULL` if
+disabled.

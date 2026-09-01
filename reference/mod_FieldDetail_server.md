@@ -15,6 +15,7 @@ mod_FieldDetail_server(
   rctv_ctas_results,
   rctv_untransformed = shiny::reactiveVal(NULL),
   rctv_queries = shiny::reactiveVal(NULL),
+  rctv_pd = shiny::reactiveVal(NULL),
   rctv_dataset_label = shiny::reactiveVal(NULL),
   rctv_studies = shiny::reactiveVal(NULL),
   rctv_selected_sites = shiny::reactiveVal(NULL)
@@ -44,6 +45,12 @@ mod_FieldDetail_server(
 
   Reactive expression returning the query data frame (NULL when no
   queries are available).
+
+- rctv_pd:
+
+  Reactive expression returning the protocol deviations data frame (NULL
+  when none are available). Protocol deviations link at site level only
+  — they are not filtered by the selected field's parameter_ids.
 
 - rctv_dataset_label:
 

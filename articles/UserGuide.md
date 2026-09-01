@@ -309,7 +309,7 @@ plot_bar(bar_ids, m, thresh = 1.3)
 
 ## Uploading your own data
 
-The app supports uploading custom data via 2 mandatory and 2 optional
+The app supports uploading custom data via 2 mandatory and 3 optional
 flat files (CSV, Parquet, or RDA):
 
 | File | Required | Description |
@@ -318,10 +318,14 @@ flat files (CSV, Parquet, or RDA):
 | Input | Yes | Pre-joined `data` + `subjects` + `parameters` (one row per observation) |
 | Untransformed | No | Original values before transformation (for display in data tables) |
 | Queries | No | Clinical query records (overlaid as dots on plots) |
+| Protocol Deviations | No | SDTM DV-style deviations linked at site level (Protocol Deviations tab) |
 
 See the collapsible “File format documentation” panel in the app’s Data
 tab for full column specifications. An optional `study` column in the
-Input file enables multi-study filtering in the Fields panel.
+Input file enables multi-study filtering in the Fields panel. Protocol
+deviations link at site level only — the Protocol Deviations tab shows
+rows for the sites currently plotted for the selected field, without any
+`parameter_id` filtering.
 
 ### Generating example upload files
 
@@ -336,7 +340,7 @@ data:
 generate_sample_csv("~/my_upload_files")
 ```
 
-This writes `results.csv`, `input.csv`, `untransformed.csv`, and
-`queries.csv` into the specified directory. The files combine both
-sample datasets (`sample_ctas_data` as STUDY-001 and `sample_sdtm_data`
-as STUDY-002) into a multi-study upload example.
+This writes `results.csv`, `input.csv`, `untransformed.csv`,
+`queries.csv`, and `pd.csv` into the specified directory. The files
+combine both sample datasets (`sample_ctas_data` as STUDY-001 and
+`sample_sdtm_data` as STUDY-002) into a multi-study upload example.

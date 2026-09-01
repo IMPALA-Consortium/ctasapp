@@ -1,7 +1,7 @@
 # Generate sample upload CSV files
 
-Creates the 4 flat CSV files (results, input, untransformed, queries)
-that can be uploaded to the ctasapp Shiny dashboard. The files are
+Creates the 5 flat CSV files (results, input, untransformed, queries,
+pd) that can be uploaded to the ctasapp Shiny dashboard. The files are
 generated from the bundled
 [sample_ctas_data](https://IMPALA-Consortium.github.io/ctasapp/reference/sample_ctas_data.md),
 [sample_ctas_results](https://IMPALA-Consortium.github.io/ctasapp/reference/sample_ctas_results.md),

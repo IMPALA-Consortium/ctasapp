@@ -100,12 +100,17 @@
   : Score colour constants
 - [`score_to_color()`](https://IMPALA-Consortium.github.io/ctasapp/reference/score_to_color.md)
   : Map a numeric score to its graduated colour
+- [`simulate_pd_data()`](https://IMPALA-Consortium.github.io/ctasapp/reference/simulate_pd_data.md)
+  : Simulate protocol deviation (SDTM DV) records for a ctas input
+  dataset
 - [`simulate_query_data()`](https://IMPALA-Consortium.github.io/ctasapp/reference/simulate_query_data.md)
   : Simulate clinical query data for a ctas input dataset
 - [`validate_upload_crossfile()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_crossfile.md)
   : Cross-validate uploaded files
 - [`validate_upload_input()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_input.md)
   : Validate uploaded input file
+- [`validate_upload_pd()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_pd.md)
+  : Validate uploaded protocol deviations file
 - [`validate_upload_queries()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_queries.md)
   : Validate uploaded queries file
 - [`validate_upload_results()`](https://IMPALA-Consortium.github.io/ctasapp/reference/validate_upload_results.md)

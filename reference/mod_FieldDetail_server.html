@@ -61,6 +61,7 @@ checkbox group.</p>
 <span>  <span class="va">rctv_ctas_results</span>,</span>
 <span>  rctv_untransformed <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  rctv_queries <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
+<span>  rctv_pd <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  rctv_dataset_label <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  rctv_studies <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  rctv_selected_sites <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
@@ -91,6 +92,13 @@ timeseries data frame (NULL for ctas sample data).</p></dd>
 <dt id="arg-rctv-queries">rctv_queries<a class="anchor" aria-label="anchor" href="#arg-rctv-queries"></a></dt>
 <dd><p>Reactive expression returning the query data frame
 (NULL when no queries are available).</p></dd>
+
+
+<dt id="arg-rctv-pd">rctv_pd<a class="anchor" aria-label="anchor" href="#arg-rctv-pd"></a></dt>
+<dd><p>Reactive expression returning the protocol deviations
+data frame (NULL when none are available). Protocol deviations link
+at site level only — they are not filtered by the selected field's
+parameter_ids.</p></dd>
 
 
 <dt id="arg-rctv-dataset-label">rctv_dataset_label<a class="anchor" aria-label="anchor" href="#arg-rctv-dataset-label"></a></dt>
