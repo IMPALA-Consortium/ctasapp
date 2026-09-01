@@ -471,3 +471,79 @@ test_that("simulate_query_data seed is reproducible", {
   qd2 <- simulate_query_data(ctas_input, seed = 42)
   expect_identical(qd1, qd2)
 })
+
+
+# --- simulate_pd_data tests --------------------------------------------------
+
+test_that("simulate_pd_data returns expected columns and non-empty result", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  pd <- simulate_pd_data(ctas_input, seed = 321)
+  expect_s3_class(pd, "data.frame")
+  expected_cols <- c("site", "subject_id", "dv_seq", "dv_term", "dv_decod",
+                     "dv_cat", "dv_scat", "dv_start_date", "dv_end_date")
+  expect_true(all(expected_cols %in% names(pd)))
+  expect_true(nrow(pd) > 0)
+})
+
+test_that("simulate_pd_data covers every site at least once", {
+  dm <- make_dm(20)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  pd <- simulate_pd_data(ctas_input, seed = 1)
+  expect_setequal(unique(pd$site), unique(ctas_input$subjects$site))
+})
+
+test_that("simulate_pd_data dv_cat/dv_scat values are from allowed vocab", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  pd <- simulate_pd_data(ctas_input, seed = 7)
+  expect_true(all(pd$dv_cat %in% c("MAJOR", "MINOR", "IMPORTANT")))
+  expect_true(all(pd$dv_scat %in% c(
+    "INCLUSION CRITERIA NOT MET", "PROHIBITED CONMED",
+    "STUDY PROCEDURE NOT DONE", "VISIT WINDOW DEVIATION",
+    "INFORMED CONSENT ISSUE"
+  )))
+})
+
+test_that("simulate_pd_data dv_end_date is >= dv_start_date", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  pd <- simulate_pd_data(ctas_input, seed = 3)
+  expect_true(all(pd$dv_end_date >= pd$dv_start_date))
+})
+
+test_that("simulate_pd_data is reproducible with a seed", {
+  dm <- make_dm(10)
+  lb <- make_lb(dm, n_visits = 5)
+  input_labs <- Input_Labs(dm, lb)
+  ctas_input <- combine_ctas_input(input_labs)
+
+  pd1 <- simulate_pd_data(ctas_input, seed = 99)
+  pd2 <- simulate_pd_data(ctas_input, seed = 99)
+  expect_identical(pd1, pd2)
+})
+
+test_that("simulate_pd_data returns empty frame for no-subjects input", {
+  empty_input <- list(
+    subjects = data.frame(
+      subject_id = character(0), site = character(0),
+      stringsAsFactors = FALSE
+    )
+  )
+  pd <- simulate_pd_data(empty_input, seed = 1)
+  expect_equal(nrow(pd), 0)
+  expect_true("dv_cat" %in% names(pd))
+})
+

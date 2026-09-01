@@ -438,6 +438,34 @@ test_that("validate_upload_queries catches non-logical data_change", {
   expect_true(any(grepl("logical", errs)))
 })
 
+# -- validate_upload_pd --------------------------------------------------------
+
+test_that("validate_upload_pd passes for valid data", {
+  df <- data.frame(
+    site = "S001", subject_id = "S001-01",
+    dv_cat = "MAJOR", dv_scat = "INCLUSION CRITERIA NOT MET",
+    stringsAsFactors = FALSE
+  )
+  expect_length(validate_upload_pd(df), 0)
+})
+
+test_that("validate_upload_pd catches non-dataframe", {
+  errs <- validate_upload_pd(NULL)
+  expect_length(errs, 1)
+})
+
+test_that("validate_upload_pd catches missing site column", {
+  df <- data.frame(subject_id = "S1", stringsAsFactors = FALSE)
+  errs <- validate_upload_pd(df)
+  expect_true(any(grepl("site", errs)))
+})
+
+test_that("validate_upload_pd catches empty data frame", {
+  df <- data.frame(site = character(0), stringsAsFactors = FALSE)
+  errs <- validate_upload_pd(df)
+  expect_true(any(grepl("no rows", errs)))
+})
+
 # -- validate_upload_crossfile -------------------------------------------------
 
 test_that("validate_upload_crossfile returns empty for clean data", {
@@ -536,10 +564,16 @@ test_that("reconstruct_from_upload passes through optional files", {
     subject_id = "S1", parameter_id = "p1", visit = "V1",
     data_change = FALSE, stringsAsFactors = FALSE
   )
+  pd_df <- data.frame(
+    site = "A", subject_id = "S1", dv_cat = "MAJOR",
+    dv_scat = "INCLUSION CRITERIA NOT MET",
+    stringsAsFactors = FALSE
+  )
 
-  out <- reconstruct_from_upload(input_df, results_df, ut_df, q_df)
+  out <- reconstruct_from_upload(input_df, results_df, ut_df, q_df, pd_df)
   expect_s3_class(out$ctas_data$untransformed, "data.frame")
   expect_s3_class(out$ctas_data$queries, "data.frame")
+  expect_s3_class(out$ctas_data$pd, "data.frame")
 })
 
 # -- aggregate_results ---------------------------------------------------------

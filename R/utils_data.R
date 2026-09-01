@@ -496,9 +496,38 @@ validate_upload_queries <- function(df) {
 }
 
 
+#' Validate uploaded protocol deviations file
+#'
+#' Checks that a data frame has the columns required to display protocol
+#' deviations at site level in the Field Detail view. Only `site` is
+#' required; other columns are passed through as-is.
+#'
+#' @param df Data frame to validate.
+#' @return Character vector of error messages (length-0 means valid).
+#' @export
+validate_upload_pd <- function(df) {
+  errs <- character()
+
+  if (!is.data.frame(df)) {
+    return("Protocol deviations file must be a data frame.")
+  }
+
+  if (nrow(df) == 0L) {
+    errs <- c(errs, "Protocol deviations file has no rows.")
+  }
+
+  if (!"site" %in% names(df)) {
+    errs <- c(errs, "Protocol deviations file is missing required column: site")
+  }
+
+  errs
+}
+
+
+
 #' Generate sample upload CSV files
 #'
-#' Creates the 4 flat CSV files (results, input, untransformed, queries)
+#' Creates the 5 flat CSV files (results, input, untransformed, queries, pd)
 #' that can be uploaded to the ctasapp Shiny dashboard. The files are
 #' generated from the bundled [sample_ctas_data], [sample_ctas_results],
 #' [sample_sdtm_data], and [sample_sdtm_results] datasets, combining
@@ -588,6 +617,8 @@ generate_sample_csv <- function(path,
   }
   queries_csv <- dplyr::bind_rows(ctas_d$queries, sdtm_queries)
 
+  pd_csv <- dplyr::bind_rows(ctas_d$pd, sdtm_d$pd)
+
   files <- character()
 
   f <- file.path(path, "results.csv")
@@ -607,6 +638,12 @@ generate_sample_csv <- function(path,
   if (!is.null(queries_csv) && nrow(queries_csv) > 0) {
     f <- file.path(path, "queries.csv")
     utils::write.csv(queries_csv, f, row.names = FALSE)
+    files <- c(files, f)
+  }
+
+  if (!is.null(pd_csv) && nrow(pd_csv) > 0) {
+    f <- file.path(path, "pd.csv")
+    utils::write.csv(pd_csv, f, row.names = FALSE)
     files <- c(files, f)
   }
 
@@ -665,12 +702,14 @@ validate_upload_crossfile <- function(input_df, results_df) {
 #' @param results_df Data frame from the results file upload.
 #' @param untransformed_df Optional data frame from the untransformed upload.
 #' @param queries_df Optional data frame from the queries upload.
+#' @param pd_df Optional data frame from the protocol deviations upload.
 #'
 #' @return A named list with `ctas_data` and `ctas_results`.
 #' @export
 reconstruct_from_upload <- function(input_df, results_df,
                                     untransformed_df = NULL,
-                                    queries_df = NULL) {
+                                    queries_df = NULL,
+                                    pd_df = NULL) {
 
   data_cols <- c("subject_id", "parameter_id", "timepoint_1_name",
                  "timepoint_rank", "result")
@@ -694,7 +733,8 @@ reconstruct_from_upload <- function(input_df, results_df,
     subjects   = unique(input_df[, subject_cols, drop = FALSE]),
     parameters = unique(input_df[, param_cols, drop = FALSE]),
     untransformed = untransformed_df,
-    queries       = queries_df
+    queries       = queries_df,
+    pd            = pd_df
   )
 
   score_cols <- intersect(

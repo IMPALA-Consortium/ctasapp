@@ -8,7 +8,8 @@ get_embedded_paths()
 }
 \value{
 A named list with elements \code{results}, \code{input}, \code{untransformed},
-\code{queries} (each a character path or \code{NULL}), or \code{NULL} if disabled.
+\code{queries}, \code{pd} (each a character path or \code{NULL}), or \code{NULL} if
+disabled.
 }
 \description{
 Returns the list of resolved file paths configured in the \verb{embedded:}

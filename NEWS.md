@@ -2,6 +2,9 @@
 * control linkage between score tables, plots and data tables with radio button
 * clear missingness outlier indication
 * clear failure and bug reporting
+* new Protocol Deviations tab in Field Detail (site-level linkage) with
+  matching upload/embedded/sample workflow (`simulate_pd_data()`,
+  `validate_upload_pd()`, `pd` element in sample data and embedded config)
 
 # ctasapp 0.4.0
 * standard config renamed to ctasapp.yml

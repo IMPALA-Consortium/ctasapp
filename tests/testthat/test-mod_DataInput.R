@@ -8,7 +8,7 @@ test_that("mod_DataInput_server returns full list of reactives", {
     returned <- session$getReturned()
     expect_type(returned, "list")
     expected_names <- c("measures", "ctas_results", "untransformed",
-                        "queries", "dataset_label", "studies")
+                        "queries", "pd", "dataset_label", "studies")
     for (nm in expected_names) {
       expect_true(nm %in% names(returned), info = paste("missing:", nm))
     }
@@ -16,6 +16,7 @@ test_that("mod_DataInput_server returns full list of reactives", {
     expect_null(returned$ctas_results())
     expect_null(returned$untransformed())
     expect_null(returned$queries())
+    expect_null(returned$pd())
     expect_null(returned$dataset_label())
     expect_null(returned$studies())
   })

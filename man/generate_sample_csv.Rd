@@ -21,7 +21,7 @@ to include from the SDTM sample. Pass \code{NULL} to include all.}
 A character vector of the file paths written (invisibly).
 }
 \description{
-Creates the 4 flat CSV files (results, input, untransformed, queries)
+Creates the 5 flat CSV files (results, input, untransformed, queries, pd)
 that can be uploaded to the ctasapp Shiny dashboard. The files are
 generated from the bundled \link{sample_ctas_data}, \link{sample_ctas_results},
 \link{sample_sdtm_data}, and \link{sample_sdtm_results} datasets, combining

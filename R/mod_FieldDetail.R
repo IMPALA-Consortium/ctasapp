@@ -97,7 +97,9 @@ mod_FieldDetail_ui <- function(id) {
         id = ns("data_tab"),
         selected = "Queries",
         bslib::nav_panel("Queries", DT::dataTableOutput(ns("query_table"))),
-        bslib::nav_panel("Source Data", DT::dataTableOutput(ns("ts_data_table")))
+        bslib::nav_panel("Source Data", DT::dataTableOutput(ns("ts_data_table"))),
+        bslib::nav_panel("Protocol Deviations",
+                         DT::dataTableOutput(ns("pd_table")))
       )
     )
   )
@@ -321,6 +323,10 @@ render_score_dt <- function(scores_display, thresh, selected_sites = NULL) {
 #'   timeseries data frame (NULL for ctas sample data).
 #' @param rctv_queries Reactive expression returning the query data frame
 #'   (NULL when no queries are available).
+#' @param rctv_pd Reactive expression returning the protocol deviations
+#'   data frame (NULL when none are available). Protocol deviations link
+#'   at site level only — they are not filtered by the selected field's
+#'   parameter_ids.
 #' @param rctv_dataset_label Reactive expression returning the dataset label
 #'   string (e.g. "ctas sample", "SDTM sample", or a user filename).
 #' @param rctv_studies Reactive expression returning a character vector of
@@ -333,6 +339,7 @@ render_score_dt <- function(scores_display, thresh, selected_sites = NULL) {
 mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
                                    rctv_untransformed = shiny::reactiveVal(NULL),
                                    rctv_queries = shiny::reactiveVal(NULL),
+                                   rctv_pd = shiny::reactiveVal(NULL),
                                    rctv_dataset_label = shiny::reactiveVal(NULL),
                                    rctv_studies = shiny::reactiveVal(NULL),
                                    rctv_selected_sites = shiny::reactiveVal(NULL)) {
@@ -400,6 +407,17 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       m <- flt_measures()
       study_subj <- unique(m$subject_id)
       qd[qd$subject_id %in% study_subj, ]
+    })
+
+    flt_pd <- shiny::reactive({
+      pd <- rctv_pd()
+      if (is.null(pd)) return(NULL)
+      sel <- input$study_filter
+      if (is.null(sel) || sel == "__all__") return(pd)
+      if (!"subject_id" %in% names(pd)) return(pd) # nocov
+      m <- flt_measures() # nocov start
+      study_subj <- unique(m$subject_id)
+      pd[pd$subject_id %in% study_subj, ] # nocov end
     })
 
     rctv_study <- shiny::reactive({ # nocov start
@@ -1165,6 +1183,49 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
           colReorder = TRUE,
           scrollX = TRUE,
           columnDefs = col_defs
+        )
+      )
+    })
+
+    # -- Protocol deviations table (site-level linkage) ------------------------
+    output$pd_table <- DT::renderDataTable({
+      pd <- flt_pd()
+      shiny::validate(shiny::need(
+        !is.null(pd) && nrow(pd) > 0,
+        "No protocol deviation data available for this dataset."
+      ))
+      shiny::req(input$selected_param)
+      plot_sites <- rctv_plot_sites()
+      shiny::req(plot_sites)
+
+      pd_filtered <- pd |>
+        dplyr::filter(.data$site %in% .env$plot_sites)
+
+      shiny::validate(shiny::need(
+        nrow(pd_filtered) > 0,
+        "No protocol deviations for outlier sites."
+      ))
+
+      front_cols <- intersect(
+        c("site", "subject_id", "dv_cat", "dv_scat", "dv_decod", "dv_term",
+          "dv_start_date", "dv_end_date", "dv_seq"),
+        names(pd_filtered)
+      )
+      rest_cols <- setdiff(names(pd_filtered), front_cols)
+      pd_filtered <- pd_filtered[, c(front_cols, rest_cols), drop = FALSE]
+
+      DT::datatable(
+        pd_filtered,
+        filter = "top",
+        rownames = FALSE,
+        extensions = c("Buttons", "ColReorder"),
+        options = list(
+          pageLength = 25,
+          lengthMenu = c(5, 10, 25, 50, 100),
+          dom = "Blfrtip",
+          buttons = list("copy", "csv", "excel", "colvis"),
+          colReorder = TRUE,
+          scrollX = TRUE
         )
       )
     })

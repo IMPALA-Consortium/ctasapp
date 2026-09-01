@@ -85,7 +85,7 @@ run_ctas_app <- function(config = NULL, verbose = TRUE, ...) {
 
     mod_FieldDetail_server(
       "field_detail", data$measures, data$ctas_results, data$untransformed,
-      data$queries, data$dataset_label, data$studies,
+      data$queries, data$pd, data$dataset_label, data$studies,
       rctv_selected_sites = rctv_selected_sites
     )
   }
