@@ -115,7 +115,7 @@ plot_timeseries <- function(param_ids, df_measures, thresh = 0, sites = NULL,
   param_cat1 <- unique(df$parameter_category_1)
   title_str <- paste(param_cat2, "-", param_cat1)
 
-  combined <- Reduce(`/`, plot_list) +
+  combined <- patchwork::wrap_plots(plot_list, ncol = 1) +
     patchwork::plot_annotation(
       title = title_str,
       subtitle = paste0(
