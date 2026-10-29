@@ -2,6 +2,8 @@
 * control linkage between score tables, plots and data tables with radio button
 * clear missingness outlier indication
 * clear failure and bug reporting
+* categorical fields with a single timepoint per subject are plotted as bar
+  charts automatically, no `parameter_category_3 = "bar"` required
 * new Protocol Deviations tab in Field Detail (site-level linkage) with
   matching upload/embedded/sample workflow (`simulate_pd_data()`,
   `validate_upload_pd()`, `pd` element in sample data and embedded config)

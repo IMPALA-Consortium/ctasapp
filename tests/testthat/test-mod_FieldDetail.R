@@ -58,6 +58,61 @@ test_that("build_param_lookup splits independent params with same category_2", {
   expect_true("param2" %in% lookup$display_id)
 })
 
+make_cat_measures <- function(n_tp_per_subject, cat3 = "categorical",
+                              cat2 = "BMICAT") {
+  do.call(rbind, lapply(seq_along(n_tp_per_subject), function(i) {
+    tps <- seq_len(n_tp_per_subject[i])
+    data.frame(
+      subject_id = paste0("S", i),
+      timepoint_rank = rep(tps, each = 2),
+      parameter_id = rep(paste0("CAT_", cat2, c("=A", "=B")), length(tps)),
+      parameter_category_2 = cat2,
+      parameter_category_3 = cat3,
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+test_that("build_param_lookup infers bar for single-timepoint categorical", {
+  lookup <- build_param_lookup(make_cat_measures(c(1, 1, 1)))
+  expect_equal(lookup$plot_type, "bar")
+  expect_equal(lookup$cat3_values[[1]], "categorical")
+})
+
+test_that("build_param_lookup keeps categorical for multi-timepoint fields", {
+  lookup <- build_param_lookup(make_cat_measures(c(3, 2, 4)))
+  expect_equal(lookup$plot_type, "categorical")
+})
+
+test_that("build_param_lookup infers bar when median subject has one timepoint", {
+  lookup <- build_param_lookup(make_cat_measures(c(1, 1, 3)))
+  expect_equal(lookup$plot_type, "bar")
+})
+
+test_that("build_param_lookup keeps explicit bar regardless of timepoints", {
+  lookup <- build_param_lookup(make_cat_measures(c(3, 3), cat3 = "bar"))
+  expect_equal(lookup$plot_type, "bar")
+})
+
+test_that("build_param_lookup does not infer bar for numeric fields", {
+  df <- data.frame(
+    subject_id = c("S1", "S2"),
+    timepoint_rank = c(1, 1),
+    parameter_id = c("RANGE_ALT", "MISS_ALT"),
+    parameter_category_2 = "ALT",
+    parameter_category_3 = c("range_normalized", "ratio_missing"),
+    stringsAsFactors = FALSE
+  )
+  expect_equal(build_param_lookup(df)$plot_type, "numeric")
+})
+
+test_that("single_timepoint_fields handles empty candidates", {
+  expect_equal(
+    single_timepoint_fields(make_cat_measures(c(1, 1)), character()),
+    character()
+  )
+})
+
 test_that("determine_plot_type returns single type directly", {
   expect_equal(determine_plot_type("numeric"), "numeric")
   expect_equal(determine_plot_type("categorical"), "categorical")

@@ -121,6 +121,9 @@ mod_FieldDetail_ui <- function(id) {
 #' Now also includes a `cat3_values` list column with raw `parameter_category_3`
 #' values for icon determination.
 #'
+#' `categorical` fields where the median subject has a single timepoint are
+#' plotted as `"bar"` (see [single_timepoint_fields()]).
+#'
 #' @param df Measures data frame.
 #' @return A data frame with `display_id`, `parameter_ids` (list column),
 #'   `plot_type`, and `cat3_values` (list column).
@@ -138,6 +141,11 @@ build_param_lookup <- function(df) {
       n_cat3 = dplyr::n_distinct(.data$parameter_category_3),
       .by = "parameter_category_2"
     )
+
+  bar_cat2 <- single_timepoint_fields(
+    df, by_cat2$parameter_category_2[by_cat2$plot_type == "categorical"]
+  )
+  by_cat2$plot_type[by_cat2$parameter_category_2 %in% bar_cat2] <- "bar"
 
   groupable_types <- c("categorical", "bar", "range_normalized", "ratio_missing")
 
@@ -167,6 +175,29 @@ build_param_lookup <- function(df) {
     dplyr::select("parameter_category_2", "parameter_ids", "plot_type",
                    "cat3_values") |>
     dplyr::rename(display_id = "parameter_category_2")
+}
+
+
+#' Categorical fields where the median subject has a single timepoint
+#'
+#' @param df Measures data frame.
+#' @param cat2 Candidate `parameter_category_2` values.
+#' @return Character vector of `parameter_category_2` values.
+#' @keywords internal
+single_timepoint_fields <- function(df, cat2) {
+  if (length(cat2) == 0 ||
+      !all(c("subject_id", "timepoint_rank") %in% names(df))) {
+    return(character())
+  }
+  df |>
+    dplyr::filter(.data$parameter_category_2 %in% .env$cat2,
+                  .data$parameter_category_3 == "categorical") |>
+    dplyr::summarise(n_tp = dplyr::n_distinct(.data$timepoint_rank),
+                     .by = c("parameter_category_2", "subject_id")) |>
+    dplyr::summarise(median_tp = stats::median(.data$n_tp),
+                     .by = "parameter_category_2") |>
+    dplyr::filter(.data$median_tp <= 1) |>
+    dplyr::pull(.data$parameter_category_2)
 }
 
 
@@ -313,7 +344,8 @@ render_score_dt <- function(scores_display, thresh, selected_sites = NULL) {
 #' Renders a clickable list of parameters in the sidebar. On selection,
 #' shows pill-tabbed score tables (regular + missingness), the timeseries
 #' plot, and a raw data table for outlier sites. Auto-detects plot type
-#' from `parameter_category_3`. Supports feature sub-selection via
+#' from `parameter_category_3` and the number of timepoints per subject.
+#' Supports feature sub-selection via
 #' checkbox group.
 #'
 #' @param id Module namespace ID.

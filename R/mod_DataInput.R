@@ -129,7 +129,9 @@ mod_DataInput_ui <- function(id) {
               shiny::tags$code("categorical"),
               " (alluvial plot), ",
               shiny::tags$code("bar"),
-              " (single-timepoint bar chart)."
+              " (single-timepoint bar chart; inferred for ",
+              shiny::tags$code("categorical"),
+              " fields with one timepoint per subject)."
             ),
             shiny::tags$p(
               "Optional column: ",

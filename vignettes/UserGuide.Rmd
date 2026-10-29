@@ -78,7 +78,7 @@ The `parameter_category_3` value determines how the parameter is visualized:
 | `ratio_missing` | Faceted line plot (paired with range_normalized) | `Input_Labs` via `ratio_missing_over_time()` |
 | `numeric` | Line plot (raw values) | `Input_VS` |
 | `categorical` | Alluvial / stacked bar plot | `Input_RS` via `encode_categorical()` |
-| `bar` | Single-timepoint bar chart | `Input_BMI` via `encode_categorical()` |
+| `bar` | Single-timepoint bar chart (also inferred for `categorical` fields where the median subject has one timepoint) | `Input_BMI` via `encode_categorical()` |
 
 ### Example: `Input_Labs` structure
 

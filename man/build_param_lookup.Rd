@@ -28,5 +28,8 @@ they are kept separate using \code{parameter_id} as the display key.
 
 Now also includes a \code{cat3_values} list column with raw \code{parameter_category_3}
 values for icon determination.
+
+\code{categorical} fields where the median subject has a single timepoint are
+plotted as \code{"bar"} (see \code{\link[=single_timepoint_fields]{single_timepoint_fields()}}).
 }
 \keyword{internal}
