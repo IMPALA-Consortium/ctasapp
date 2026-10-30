@@ -50,9 +50,9 @@ scores_with_parameter_id <- function(ctas_results) {
 #' and aggregated site scores into a single data frame suitable for plotting.
 #'
 #' @param ctas_data List with elements `data`, `subjects`, `parameters`
-#'   as used by [ctas::process_a_study()].
+#'   as used by `ctas::process_a_study()`.
 #' @param ctas_results List with elements `timeseries`, `timeseries_features`,
-#'   `PCA_coordinates`, `site_scores` as returned by [ctas::process_a_study()].
+#'   `PCA_coordinates`, `site_scores` as returned by `ctas::process_a_study()`.
 #'
 #' @return A data frame with one row per subject/timepoint/parameter observation
 #'   and columns: subject_id, timepoint_rank, timepoint_1_name, result,
@@ -110,7 +110,7 @@ prepare_measures <- function(ctas_data, ctas_results) {
 #' Pivots per-feature site scores into a wide data frame with one row per site
 #' and one column per feature, plus an aggregated `max_score` column.
 #'
-#' @param ctas_results List as returned by [ctas::process_a_study()].
+#' @param ctas_results List as returned by `ctas::process_a_study()`.
 #' @param parameter_id Character scalar, the parameter to filter on.
 #'
 #' @return A data frame with columns: site, one per feature, max_score.
@@ -150,7 +150,7 @@ prepare_score_table <- function(ctas_results, parameter_id) {
 #' Returns the measures data frame with an updated `max_score` column.
 #'
 #' @param measures Data frame as returned by [prepare_measures()].
-#' @param ctas_results List as returned by [ctas::process_a_study()].
+#' @param ctas_results List as returned by `ctas::process_a_study()`.
 #' @param features Character vector of feature names to include, or NULL for all.
 #'
 #' @return A data frame identical to `measures` but with recalculated `max_score`.
@@ -185,7 +185,7 @@ recompute_max_score <- function(measures, ctas_results, features = NULL) {
 #' Like [prepare_score_table()] but accepts a vector of parameter IDs, pooling
 #' scores across them. Used for grouped categorical/bar parameters.
 #'
-#' @param ctas_results List as returned by [ctas::process_a_study()].
+#' @param ctas_results List as returned by `ctas::process_a_study()`.
 #' @param parameter_ids Character vector of parameter IDs.
 #' @param features Character vector of feature names to include, or NULL for all.
 #'
@@ -525,129 +525,44 @@ validate_upload_pd <- function(df) {
 
 
 
-#' Generate sample upload CSV files
+#' Generate sample upload files
 #'
-#' Creates the 5 flat CSV files (results, input, untransformed, queries, pd)
-#' that can be uploaded to the ctasapp Shiny dashboard. The files are
-#' generated from the bundled [sample_ctas_data], [sample_ctas_results],
-#' [sample_sdtm_data], and [sample_sdtm_results] datasets, combining
-#' them into a multi-study example.
+#' Writes the flat upload files (results, input, untransformed, queries, pd)
+#' generated with gsm.ctas, shipped as parquet in
+#' `system.file("extdata", package = "ctasapp")`, to `path` as CSV or
+#' parquet. They can be uploaded to the ctasapp Shiny dashboard and
+#' correspond to [sample_data] and [sample_results].
 #'
-#' @param path Directory where CSVs will be written. Created if it does
+#' @param path Directory where the files will be written. Created if it does
 #'   not exist.
-#' @param sdtm_categories Character vector of `parameter_category_2` values
-#'   to include from the SDTM sample. Pass `NULL` to include all.
+#' @param format Output format, `"csv"` (default) or `"parquet"`.
 #' @return A character vector of the file paths written (invisibly).
 #' @export
 #' @examples
 #' \dontrun{
 #' generate_sample_csv(tempdir())
 #' }
-generate_sample_csv <- function(path,
-                                sdtm_categories = c(
-                                  "ALT", "AST", "CREAT",
-                                  "VS_DIABP", "VS_HEIGHT", "VS_PULSE",
-                                  "VS_SYSBP", "VS_TEMP", "VS_WEIGHT",
-                                  "RS_OVRLRESP", "VS_WEIGHT_CAT"
-                                )) {
+generate_sample_csv <- function(path, format = c("csv", "parquet")) {
+  format <- match.arg(format)
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
 
-  ctas_d <- ctasapp::sample_ctas_data
-  ctas_r <- ctasapp::sample_ctas_results
-  sdtm_d <- ctasapp::sample_sdtm_data
-  sdtm_r <- ctasapp::sample_sdtm_results
+  src <- list.files(
+    system.file("extdata", package = "ctasapp"),
+    pattern = "\\.parquet$", full.names = TRUE
+  )
 
-  ctas_input_df <- ctas_d$data |>
-    dplyr::left_join(ctas_d$subjects, by = "subject_id") |>
-    dplyr::left_join(
-      ctas_d$parameters[, c("parameter_id", "parameter_name",
-                             "parameter_category_1", "parameter_category_2",
-                             "parameter_category_3")],
-      by = "parameter_id"
-    ) |>
-    dplyr::mutate(study = "STUDY-001")
-
-  ctas_results_df <- ctas_r$site_scores |>
-    dplyr::left_join(
-      ctas_r$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    )
-
-  if (!is.null(sdtm_categories)) {
-    keep_param_ids <- sdtm_d$parameters$parameter_id[
-      sdtm_d$parameters$parameter_category_2 %in% sdtm_categories
-    ]
-  } else {
-    keep_param_ids <- sdtm_d$parameters$parameter_id
+  if (format == "parquet") {
+    dest <- file.path(path, basename(src))
+    file.copy(src, dest, overwrite = TRUE)
+    return(invisible(dest))
   }
 
-  sdtm_input_df <- sdtm_d$data |>
-    dplyr::filter(.data$parameter_id %in% .env$keep_param_ids) |>
-    dplyr::left_join(sdtm_d$subjects, by = "subject_id") |>
-    dplyr::left_join(
-      sdtm_d$parameters[, c("parameter_id", "parameter_name",
-                             "parameter_category_1", "parameter_category_2",
-                             "parameter_category_3")],
-      by = "parameter_id"
-    ) |>
-    dplyr::mutate(study = "STUDY-002")
-
-  sdtm_results_df <- sdtm_r$site_scores |>
-    dplyr::left_join(
-      sdtm_r$timeseries[, c("timeseries_id", "parameter_id")],
-      by = "timeseries_id"
-    ) |>
-    dplyr::filter(.data$parameter_id %in% .env$keep_param_ids)
-
-  input_csv <- dplyr::bind_rows(ctas_input_df, sdtm_input_df)
-  results_csv <- dplyr::bind_rows(ctas_results_df, sdtm_results_df)
-
-  untransformed_csv <- if (!is.null(sdtm_d$untransformed)) {
-    if (!is.null(sdtm_categories)) {
-      sdtm_d$untransformed |>
-        dplyr::filter(.data$parameter_category_2 %in% .env$sdtm_categories)
-    } else {
-      sdtm_d$untransformed
-    }
+  dest <- file.path(path, sub("\\.parquet$", ".csv", basename(src)))
+  for (i in seq_along(src)) {
+    utils::write.csv(read_upload_file(src[i], basename(src[i])), dest[i],
+                     row.names = FALSE)
   }
-
-  sdtm_queries <- if (!is.null(sdtm_d$queries)) {
-    sdtm_d$queries |>
-      dplyr::filter(.data$parameter_id %in% .env$keep_param_ids)
-  }
-  queries_csv <- dplyr::bind_rows(ctas_d$queries, sdtm_queries)
-
-  pd_csv <- dplyr::bind_rows(ctas_d$pd, sdtm_d$pd)
-
-  files <- character()
-
-  f <- file.path(path, "results.csv")
-  utils::write.csv(results_csv, f, row.names = FALSE)
-  files <- c(files, f)
-
-  f <- file.path(path, "input.csv")
-  utils::write.csv(input_csv, f, row.names = FALSE)
-  files <- c(files, f)
-
-  if (!is.null(untransformed_csv) && nrow(untransformed_csv) > 0) {
-    f <- file.path(path, "untransformed.csv")
-    utils::write.csv(untransformed_csv, f, row.names = FALSE)
-    files <- c(files, f)
-  }
-
-  if (!is.null(queries_csv) && nrow(queries_csv) > 0) {
-    f <- file.path(path, "queries.csv")
-    utils::write.csv(queries_csv, f, row.names = FALSE)
-    files <- c(files, f)
-  }
-
-  if (!is.null(pd_csv) && nrow(pd_csv) > 0) {
-    f <- file.path(path, "pd.csv")
-    utils::write.csv(pd_csv, f, row.names = FALSE)
-    files <- c(files, f)
-  }
-
-  invisible(files)
+  invisible(dest)
 }
 
 

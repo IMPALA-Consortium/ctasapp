@@ -24,7 +24,7 @@ mod_FieldDetail_server(
 \item{rctv_ctas_results}{Reactive expression returning the raw ctas results list.}
 
 \item{rctv_untransformed}{Reactive expression returning the untransformed
-timeseries data frame (NULL for ctas sample data).}
+timeseries data frame (NULL when not available).}
 
 \item{rctv_queries}{Reactive expression returning the query data frame
 (NULL when no queries are available).}
@@ -35,7 +35,7 @@ at site level only — they are not filtered by the selected field's
 parameter_ids.}
 
 \item{rctv_dataset_label}{Reactive expression returning the dataset label
-string (e.g. "ctas sample", "SDTM sample", or a user filename).}
+string (e.g. "Sample data (gsm.ctas)" or a user filename).}
 
 \item{rctv_studies}{Reactive expression returning a character vector of
 available study names, or NULL when data has no study column or only

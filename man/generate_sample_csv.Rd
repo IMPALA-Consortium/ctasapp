@@ -2,30 +2,25 @@
 % Please edit documentation in R/utils_data.R
 \name{generate_sample_csv}
 \alias{generate_sample_csv}
-\title{Generate sample upload CSV files}
+\title{Generate sample upload files}
 \usage{
-generate_sample_csv(
-  path,
-  sdtm_categories = c("ALT", "AST", "CREAT", "VS_DIABP", "VS_HEIGHT", "VS_PULSE",
-    "VS_SYSBP", "VS_TEMP", "VS_WEIGHT", "RS_OVRLRESP", "VS_WEIGHT_CAT")
-)
+generate_sample_csv(path, format = c("csv", "parquet"))
 }
 \arguments{
-\item{path}{Directory where CSVs will be written. Created if it does
+\item{path}{Directory where the files will be written. Created if it does
 not exist.}
 
-\item{sdtm_categories}{Character vector of \code{parameter_category_2} values
-to include from the SDTM sample. Pass \code{NULL} to include all.}
+\item{format}{Output format, \code{"csv"} (default) or \code{"parquet"}.}
 }
 \value{
 A character vector of the file paths written (invisibly).
 }
 \description{
-Creates the 5 flat CSV files (results, input, untransformed, queries, pd)
-that can be uploaded to the ctasapp Shiny dashboard. The files are
-generated from the bundled \link{sample_ctas_data}, \link{sample_ctas_results},
-\link{sample_sdtm_data}, and \link{sample_sdtm_results} datasets, combining
-them into a multi-study example.
+Writes the flat upload files (results, input, untransformed, queries, pd)
+generated with gsm.ctas, shipped as parquet in
+\code{system.file("extdata", package = "ctasapp")}, to \code{path} as CSV or
+parquet. They can be uploaded to the ctasapp Shiny dashboard and
+correspond to \link{sample_data} and \link{sample_results}.
 }
 \examples{
 \dontrun{

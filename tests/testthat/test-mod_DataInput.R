@@ -22,31 +22,9 @@ test_that("mod_DataInput_server returns full list of reactives", {
   })
 })
 
-test_that("mod_DataInput_server loads ctas sample data on button click", {
+test_that("mod_DataInput_server loads gsm.ctas sample data on button click", {
   shiny::testServer(mod_DataInput_server, {
-    session$setInputs(data_source = "ctas", load_data = 1)
-
-    returned <- session$getReturned()
-    m <- returned$measures()
-    res <- returned$ctas_results()
-
-    expect_s3_class(m, "data.frame")
-    expect_true(nrow(m) > 0)
-    expect_true("parameter_id" %in% names(m))
-
-    expect_type(res, "list")
-    expect_true("site_scores" %in% names(res))
-    expect_true("timeseries" %in% names(res))
-
-    expect_null(returned$untransformed())
-    expect_equal(returned$dataset_label(), "ctas sample")
-    expect_null(returned$studies())
-  })
-})
-
-test_that("mod_DataInput_server loads SDTM sample data on button click", {
-  shiny::testServer(mod_DataInput_server, {
-    session$setInputs(data_source = "sdtm", load_data = 1)
+    session$setInputs(data_source = "sample", load_data = 1)
 
     returned <- session$getReturned()
     m <- returned$measures()
@@ -55,23 +33,26 @@ test_that("mod_DataInput_server loads SDTM sample data on button click", {
 
     expect_s3_class(m, "data.frame")
     expect_true(nrow(m) > 0)
+    expect_true(all(c("categorical", "numeric", "range_normalized",
+                      "ratio_missing") %in% m$parameter_category_3))
 
-    cats <- unique(m$parameter_category_3)
-    expect_true("categorical" %in% cats || "bar" %in% cats ||
-                  "range_normalized" %in% cats)
+    expect_type(res, "list")
+    expect_true("site_scores" %in% names(res))
 
     expect_s3_class(ut, "data.frame")
     expect_true(nrow(ut) > 0)
     expect_true(all(c("subject_id", "parameter_category_2", "timepoint_1_name",
                        "original_value") %in% names(ut)))
-    expect_equal(returned$dataset_label(), "SDTM sample")
+    expect_s3_class(returned$queries(), "data.frame")
+    expect_s3_class(returned$pd(), "data.frame")
+    expect_equal(returned$dataset_label(), "Sample data (gsm.ctas)")
     expect_null(returned$studies())
   })
 })
 
 test_that("mod_DataInput_server renders status after loading", {
   shiny::testServer(mod_DataInput_server, {
-    session$setInputs(data_source = "ctas", load_data = 1)
+    session$setInputs(data_source = "sample", load_data = 1)
 
     status <- output$status
     expect_true(inherits(status, "list") || is.character(status$html))
@@ -116,50 +97,61 @@ test_that("read_upload_file errors for unsupported format", {
   unlink(tmp)
 })
 
-test_that("read_upload_file errors for parquet without arrow", {
-  skip_if(requireNamespace("arrow", quietly = TRUE),
-          "arrow is installed; cannot test missing-arrow path")
+test_that("read_upload_file reads parquet", {
   tmp <- tempfile(fileext = ".parquet")
-  writeLines("dummy", tmp)
-  expect_error(read_upload_file(tmp, "test.parquet"), "arrow")
-  unlink(tmp)
+  on.exit(unlink(tmp), add = TRUE)
+  arrow::write_parquet(data.frame(a = 1:3, b = letters[1:3]), tmp)
+  df <- read_upload_file(tmp, "test.parquet")
+  expect_s3_class(df, "data.frame")
+  expect_equal(nrow(df), 3)
+  expect_true(all(c("a", "b") %in% names(df)))
 })
 
-# -- Upload with generated CSV fixtures ----------------------------------------
+# -- Shipped parquet sample files ----------------------------------------------
 
-test_that("generated CSV fixtures load and validate", {
-  tmp_dir <- tempfile("csv_fixtures")
-  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
-  generate_sample_csv(tmp_dir)
-
-  results_df <- read_upload_file(file.path(tmp_dir, "results.csv"), "results.csv")
-  input_df <- read_upload_file(file.path(tmp_dir, "input.csv"), "input.csv")
+test_that("shipped parquet sample files load and validate", {
+  ext <- system.file("extdata", package = "ctasapp")
+  read_ext <- function(nm) {
+    read_upload_file(file.path(ext, paste0(nm, ".parquet")), paste0(nm, ".parquet"))
+  }
+  results_df <- read_ext("results")
+  input_df <- read_ext("input")
 
   expect_length(validate_upload_results(results_df), 0)
   expect_length(validate_upload_input(input_df), 0)
+  expect_length(validate_upload_untransformed(read_ext("untransformed")), 0)
+  expect_length(validate_upload_queries(read_ext("queries")), 0)
+  expect_length(validate_upload_pd(read_ext("pd")), 0)
 
-  out <- reconstruct_from_upload(input_df, results_df)
+  out <- reconstruct_from_upload(input_df, aggregate_results(results_df))
   measures <- prepare_measures(out$ctas_data, out$ctas_results)
   expect_s3_class(measures, "data.frame")
   expect_true(nrow(measures) > 0)
-  expect_true("study" %in% names(out$ctas_data$subjects))
-  expect_true(length(unique(out$ctas_data$subjects$study)) > 1)
 })
 
-test_that("generated untransformed and queries CSVs validate", {
+# -- generate_sample_csv -------------------------------------------------------
+
+test_that("generate_sample_csv copies parquet files", {
+  tmp_dir <- tempfile("parquet_fixtures")
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+  files <- generate_sample_csv(tmp_dir, format = "parquet")
+  expect_setequal(
+    basename(files),
+    paste0(c("results", "input", "untransformed", "queries", "pd"), ".parquet")
+  )
+  expect_true(all(file.exists(files)))
+})
+
+test_that("generate_sample_csv writes CSV files that validate", {
   tmp_dir <- tempfile("csv_fixtures")
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
-  generate_sample_csv(tmp_dir)
+  files <- generate_sample_csv(tmp_dir)
+  expect_true(all(grepl("\\.csv$", files)))
 
-  ut_df <- read_upload_file(file.path(tmp_dir, "untransformed.csv"), "untransformed.csv")
-  q_df <- read_upload_file(file.path(tmp_dir, "queries.csv"), "queries.csv")
-
-  expect_length(validate_upload_untransformed(ut_df), 0)
-
-  if ("data_change" %in% names(q_df)) {
-    q_df$data_change <- as.logical(q_df$data_change)
-  }
-  expect_length(validate_upload_queries(q_df), 0)
+  results_df <- read_upload_file(file.path(tmp_dir, "results.csv"), "results.csv")
+  pd_df <- read_upload_file(file.path(tmp_dir, "pd.csv"), "pd.csv")
+  expect_length(validate_upload_results(results_df), 0)
+  expect_length(validate_upload_pd(pd_df), 0)
 })
 
 
@@ -168,12 +160,12 @@ test_that("generated untransformed and queries CSVs validate", {
 setup_embedded_fixtures <- function() {
   tmp_dir <- tempfile("embedded_")
   dir.create(tmp_dir)
-  generate_sample_csv(tmp_dir)
+  generate_sample_csv(tmp_dir, format = "parquet")
   cfg <- default_config()
-  cfg$embedded$results <- file.path(tmp_dir, "results.csv")
-  cfg$embedded$input <- file.path(tmp_dir, "input.csv")
-  cfg$embedded$untransformed <- file.path(tmp_dir, "untransformed.csv")
-  cfg$embedded$queries <- file.path(tmp_dir, "queries.csv")
+  cfg$embedded$results <- file.path(tmp_dir, "results.parquet")
+  cfg$embedded$input <- file.path(tmp_dir, "input.parquet")
+  cfg$embedded$untransformed <- file.path(tmp_dir, "untransformed.parquet")
+  cfg$embedded$queries <- file.path(tmp_dir, "queries.parquet")
   apply_config(cfg)
   tmp_dir
 }

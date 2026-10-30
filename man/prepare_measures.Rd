@@ -8,10 +8,10 @@ prepare_measures(ctas_data, ctas_results)
 }
 \arguments{
 \item{ctas_data}{List with elements \code{data}, \code{subjects}, \code{parameters}
-as used by \code{\link[ctas:process_a_study]{ctas::process_a_study()}}.}
+as used by \code{ctas::process_a_study()}.}
 
 \item{ctas_results}{List with elements \code{timeseries}, \code{timeseries_features},
-\code{PCA_coordinates}, \code{site_scores} as returned by \code{\link[ctas:process_a_study]{ctas::process_a_study()}}.}
+\code{PCA_coordinates}, \code{site_scores} as returned by \code{ctas::process_a_study()}.}
 }
 \value{
 A data frame with one row per subject/timepoint/parameter observation

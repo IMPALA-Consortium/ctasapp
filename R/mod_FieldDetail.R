@@ -269,6 +269,46 @@ split_param_ids <- function(param_ids, df_measures) {
 }
 
 
+#' Site list for a field without CTAS scores
+#'
+#' @param df_measures Data frame from [prepare_measures()].
+#' @param parameter_ids Character vector of parameter IDs of the field.
+#' @return Data frame with columns site, n_subjects, n_obs and attribute
+#'   `sites_only = TRUE`.
+#' @keywords internal
+prepare_sites_only <- function(df_measures, parameter_ids) {
+  out <- df_measures[df_measures$parameter_id %in% parameter_ids, , drop = FALSE] |>
+    dplyr::summarise(
+      n_subjects = dplyr::n_distinct(.data$subject_id),
+      n_obs = sum(!is.na(.data$result)),
+      .by = "site"
+    ) |>
+    dplyr::arrange(.data$site)
+  attr(out, "sites_only") <- TRUE
+  out
+}
+
+#' Render the site-only DT table shown when a field has no CTAS scores
+#'
+#' @param sites_display Data frame from [prepare_sites_only()].
+#' @return A DT datatable object.
+#' @keywords internal
+render_sites_only_dt <- function(sites_display) {
+  DT::datatable(
+    as.data.frame(sites_display),
+    filter = "top",
+    rownames = FALSE,
+    extensions = "Buttons",
+    options = list(
+      pageLength = 10,
+      lengthMenu = c(5, 10, 25, 50, 100),
+      dom = "Blfrtip",
+      buttons = c("copy", "csv", "excel"),
+      scrollX = TRUE
+    )
+  )
+}
+
 #' Render a score DT table with shared colour constants
 #'
 #' @param scores_display Data frame from [prepare_score_table_multi()].
@@ -352,7 +392,7 @@ render_score_dt <- function(scores_display, thresh, selected_sites = NULL) {
 #' @param rctv_measures Reactive expression returning the measures data frame.
 #' @param rctv_ctas_results Reactive expression returning the raw ctas results list.
 #' @param rctv_untransformed Reactive expression returning the untransformed
-#'   timeseries data frame (NULL for ctas sample data).
+#'   timeseries data frame (NULL when not available).
 #' @param rctv_queries Reactive expression returning the query data frame
 #'   (NULL when no queries are available).
 #' @param rctv_pd Reactive expression returning the protocol deviations
@@ -360,7 +400,7 @@ render_score_dt <- function(scores_display, thresh, selected_sites = NULL) {
 #'   at site level only — they are not filtered by the selected field's
 #'   parameter_ids.
 #' @param rctv_dataset_label Reactive expression returning the dataset label
-#'   string (e.g. "ctas sample", "SDTM sample", or a user filename).
+#'   string (e.g. "Sample data (gsm.ctas)" or a user filename).
 #' @param rctv_studies Reactive expression returning a character vector of
 #'   available study names, or NULL when data has no study column or only
 #'   one study.
@@ -572,26 +612,32 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     param_outliers_regular <- shiny::reactive(compute_outliers("regular"))
     param_outliers_missing <- shiny::reactive(compute_outliers("missing"))
 
-    # Fields whose parameter_ids have no rows in the ctas results
-    param_no_ctas <- shiny::reactive({
+    scored_pids <- shiny::reactive({
       res <- flt_ctas_results()
       shiny::req(res)
+      unique(scores_with_parameter_id(res)$parameter_id)
+    })
+
+    # Fields where no parameter_id has ctas scores
+    param_no_ctas <- shiny::reactive({
       lookup <- rctv_param_lookup()
-      ctas_pids <- unique(scores_with_parameter_id(res)$parameter_id)
+      pids_scored <- scored_pids()
       has_ctas <- vapply(lookup$parameter_ids, function(pids) {
-        any(pids %in% ctas_pids)
+        any(pids %in% pids_scored)
       }, logical(1))
       lookup$display_id[!has_ctas]
     })
 
-    # Fields whose only parameter_ids are ratio_missing (no regular sibling)
+    # Fields where only ratio_missing parameter_ids have ctas scores
     param_only_miss <- shiny::reactive({
       df <- rctv_measures_feat()
       shiny::req(df)
       lookup <- rctv_param_lookup()
+      pids_scored <- scored_pids()
       only_miss <- vapply(lookup$parameter_ids, function(pids) {
         splits <- split_param_ids(pids, df)
-        length(splits$regular) == 0 && length(splits$missingness) > 0
+        !any(splits$regular %in% pids_scored) &&
+          any(splits$missingness %in% pids_scored)
       }, logical(1))
       lookup$display_id[only_miss]
     })
@@ -659,7 +705,7 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
         if (is_only_miss[i]) {
           parts <- c(parts, list(
             shiny::tags$span(
-              title = "Only missingness ratio available for this field",
+              title = "Only missingness scores available for this field",
               shiny::icon("bug", class = "ms-1",
                           style = "color:#b58fe0;")
             )
@@ -751,6 +797,9 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       shiny::req(res)
       param_ids <- get_param_ids()
       df <- rctv_measures_feat()
+      if (input$selected_param %in% param_no_ctas()) {
+        return(prepare_sites_only(df, filter_param_ids(param_ids)))
+      }
       feats <- get_selected_features()
       splits <- split_param_ids(param_ids, df)
       # nocov start
@@ -777,6 +826,9 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
     output$score_table_regular <- DT::renderDataTable({
       scores_display <- rctv_scores_regular()
       shiny::req(scores_display, nrow(scores_display) > 0)
+      if (isTRUE(attr(scores_display, "sites_only"))) {
+        return(render_sites_only_dt(scores_display))
+      }
       thresh <- input$thresh %||% 1.3
       sel_sites <- rctv_selected_sites()
       render_score_dt(scores_display, thresh, selected_sites = sel_sites)
@@ -795,11 +847,19 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
           class = "alert py-1 px-2 mb-0",
           style = "font-size:0.9em;background-color:#e0d4f7;color:#4b0082;",
           shiny::icon("circle-info", class = "me-1"),
-          "Only missingness ratio available"
+          "Only missingness scores available"
         ))
       }
 
       scores_reg <- rctv_scores_regular()
+      if (isTRUE(attr(scores_reg, "sites_only"))) {
+        return(shiny::tags$div(
+          class = "alert alert-warning py-1 px-2 mb-0",
+          style = "font-size:0.9em;",
+          shiny::icon("triangle-exclamation", class = "me-1"),
+          "No CTAS scores for this field. Select sites in the table to link plot & source data."
+        ))
+      }
       if (is.null(scores_reg) || nrow(scores_reg) == 0) {
         return(shiny::tags$div(
           class = "alert alert-warning py-1 px-2 mb-0",
@@ -995,6 +1055,9 @@ mod_FieldDetail_server <- function(id, rctv_measures, rctv_ctas_results,
       } else if (n_miss > 0) {
         new_mode <- "missingness"
         new_tab <- "Missingness Scores"
+      } else if (sel %in% param_no_ctas()) {
+        new_mode <- "regular"
+        new_tab <- "Regular Scores"
       } else {
         new_mode <- "none"
         new_tab <- "Regular Scores"

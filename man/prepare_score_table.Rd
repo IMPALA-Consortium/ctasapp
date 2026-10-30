@@ -7,7 +7,7 @@
 prepare_score_table(ctas_results, parameter_id)
 }
 \arguments{
-\item{ctas_results}{List as returned by \code{\link[ctas:process_a_study]{ctas::process_a_study()}}.}
+\item{ctas_results}{List as returned by \code{ctas::process_a_study()}.}
 
 \item{parameter_id}{Character scalar, the parameter to filter on.}
 }

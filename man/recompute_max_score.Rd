@@ -9,7 +9,7 @@ recompute_max_score(measures, ctas_results, features = NULL)
 \arguments{
 \item{measures}{Data frame as returned by \code{\link[=prepare_measures]{prepare_measures()}}.}
 
-\item{ctas_results}{List as returned by \code{\link[ctas:process_a_study]{ctas::process_a_study()}}.}
+\item{ctas_results}{List as returned by \code{ctas::process_a_study()}.}
 
 \item{features}{Character vector of feature names to include, or NULL for all.}
 }

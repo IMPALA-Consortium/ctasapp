@@ -21,262 +21,134 @@ pkgload::load_all(quiet = TRUE)
 
 `ctasapp` is a Shiny application for exploring results from the
 [ctas](https://github.com/IMPALA-Consortium/ctas) (Clinical Timeseries
-Anomaly Spotter) R package. The data pipeline is:
+Anomaly Spotter) R package. Input data and site scores are produced with
+[gsm.ctas](https://github.com/IMPALA-Consortium/gsm.ctas), which wraps ctas
+in mapping, metric and reporting workflows:
 
 ```
-Raw SDTM domains (dm, lb, vs, rs_onco)
+Raw SDTM domains (dm, lb, vs, eg, rs, queries, pd)
   |
   v
-Input_*() helpers               -- transform to ctas input + keep untransformed originals
+gsm.ctas mapping workflows     -- Standardize_Domain() + Transform_*()
   |
   v
-ctas::process_a_study()         -- compute site-level outlier scores
+gsm.ctas metric workflows      -- ctas site-level outlier scores
   |
   v
-ctasapp (Shiny visualization)   -- interactive exploration of scores, plots, and data
+gsm.ctas reporting workflows   -- Write_ctasapp() writes upload files
+  |
+  v
+ctasapp (Shiny visualization)  -- interactive exploration of scores, plots, and data
 ```
-
-Each `Input_*()` helper returns a list with four elements:
-
-| Element | Description |
-|:--------|:------------|
-| `data` | Transformed timeseries in ctas format (one row per subject/timepoint/parameter) |
-| `subjects` | Subject metadata (`subject_id`, `site`, `country`, `region`) |
-| `parameters` | Parameter metadata with plot-type classification |
-| `untransformed` | Pre-transformation values with reference ranges for display |
 
 
 ## Input data structure
 
-The **`data`** element has the following columns:
+The **Input** upload file has one row per subject/timepoint/parameter:
 
 | Column | Type | Description |
 |:-------|:-----|:------------|
 | `subject_id` | character | Subject identifier (USUBJID) |
-| `parameter_id` | character | Unique parameter key (e.g. `LB_NORM_ALT`, `VS_SYSBP`) |
-| `timepoint_rank` | integer | Positional visit index (1, 2, 3, ...) |
-| `timepoint_1_name` | character | Visit label (e.g. "WEEK 2", "SCREENING 1") |
-| `timepoint_2_name` | character | Secondary timepoint (usually NA) |
-| `baseline` | logical | Baseline flag (usually NA) |
-| `result` | numeric | Transformed value for ctas |
-
-The **`parameters`** element defines each parameter:
-
-| Column | Type | Description |
-|:-------|:-----|:------------|
-| `parameter_id` | character | Matches `data$parameter_id` |
+| `site` | character | Site identifier |
+| `parameter_id` | character | Unique parameter key (e.g. `RANGE_ALT`, `SYSBP`) |
 | `parameter_name` | character | Human-readable label |
 | `parameter_category_1` | character | Broad domain (e.g. "Labs", "Vital Signs") |
-| `parameter_category_2` | character | Field-level grouping key (e.g. "ALT", "VS_SYSBP") |
+| `parameter_category_2` | character | Field-level grouping key (e.g. "ALT", "SYSBP") |
 | `parameter_category_3` | character | Plot type: see table below |
+| `timepoint_rank` | integer | Positional visit index (1, 2, 3, ...) |
+| `timepoint_1_name` | character | Visit label (e.g. "WEEK 2", "SCREENING 1") |
+| `result` | numeric | Transformed value analysed by ctas |
 
 The `parameter_category_3` value determines how the parameter is visualized:
 
-| `parameter_category_3` | Plot type | Produced by |
+| `parameter_category_3` | Plot type | Produced by (gsm.ctas) |
 |:------------------------|:----------|:------------|
-| `range_normalized` | Faceted line plot (values in 0--1 range) | `Input_Labs` via `normalize_by_range()` |
-| `ratio_missing` | Faceted line plot (paired with range_normalized) | `Input_Labs` via `ratio_missing_over_time()` |
-| `numeric` | Line plot (raw values) | `Input_VS` |
-| `categorical` | Alluvial / stacked bar plot | `Input_RS` via `encode_categorical()` |
-| `bar` | Single-timepoint bar chart (also inferred for `categorical` fields where the median subject has one timepoint) | `Input_BMI` via `encode_categorical()` |
+| `range_normalized` | Faceted line plot (values in 0--1 range) | `Transform_Range()` |
+| `ratio_missing` | Faceted line plot (paired with range_normalized) | `Transform_Missing()` |
+| `numeric` | Line plot (raw values) | `Standardize_Domain()` |
+| `categorical` | Alluvial / stacked bar plot | `Transform_OneHot()` |
+| `bar` | Single-timepoint bar chart | Inferred for `categorical` fields where the median subject has one timepoint (e.g. `BMICAT`) |
 
-### Example: `Input_Labs` structure
-
-```{r input-labs-example, eval = FALSE}
-library(pharmaversesdtm)
-data("dm"); data("lb")
-
-labs <- ctasapp::Input_Labs(dm, lb)
-str(labs, max.level = 1)
-```
-
-```
-List of 5
- $ data          : tibble [82,918 x 7]
- $ subjects      : tibble [254 x 4]
- $ parameters    : tibble [78 x 5]
- $ untransformed : tibble [46,164 x 6]
-```
-
-```{r input-labs-head, eval = FALSE}
-head(labs$data[labs$data$parameter_id == "LB_NORM_ALT", ])
-```
-
-```
-  subject_id parameter_id timepoint_rank timepoint_1_name timepoint_2_name baseline    result
-  AB12345-01 LB_NORM_ALT              1       SCREENING 1             NA       NA  0.6363636
-  AB12345-01 LB_NORM_ALT              2            WEEK 2             NA       NA  0.5454545
-  ...
-```
-
-```{r input-labs-params, eval = FALSE}
-head(labs$parameters)
-```
-
-```
-  parameter_id      parameter_name parameter_category_1 parameter_category_2 parameter_category_3
-  LB_NORM_ALT   ALT (norm)         Labs                 ALT                  range_normalized
-  LB_MISS_ALT   ALT (missing)      Labs                 ALT                  ratio_missing
-  LB_NORM_ALKPH ALKPH (norm)        Labs                 ALKPH                range_normalized
-  LB_MISS_ALKPH ALKPH (missing)     Labs                 ALKPH                ratio_missing
-  ...
-```
-
-## Data transformations
-
-### Range normalization
-
-`normalize_by_range()` transforms lab values into a 0--1 scale using reference
-ranges. Values within the normal range fall between 0 and 1; below-range values
-are negative, above-range are greater than 1.
+Parameters sharing a `parameter_category_2` are shown together as one field.
+For example `RANGE_ALT` (range-normalized) and `MISS_ALT` (running ratio of
+missing values) both have `parameter_category_2 = "ALT"` and are displayed as
+a faceted pair. Range normalization maps values within the reference range
+to 0--1:
 
 $$\text{result} = \frac{\text{value} - \text{lower}}{\text{upper} - \text{lower}}$$
 
-```{r normalize-example}
-value <- c(15, 30, 45, 60)
-lower <- rep(10, 4)
-upper <- rep(50, 4)
 
-normalize_by_range(value, lower, upper)
-```
+## Generating data with gsm.ctas
 
-`Input_Labs()` applies this to each lab parameter, producing rows with
-`parameter_id = "LB_NORM_<LBTESTCD>"` and `parameter_category_3 = "range_normalized"`.
+The bundled sample data is created by `data-raw/sample_data.R`, which runs
+the gsm.ctas workflows on the SDTM data shipped with gsm.ctas:
 
-### Ratio of missing values
+```{r gsm-ctas-workflow, eval = FALSE}
+lRaw <- list(
+  Raw_DM = gsm.ctas::dm, Raw_LB = gsm.ctas::lb, Raw_VS = gsm.ctas::vs,
+  Raw_EG = gsm.ctas::eg, Raw_RS = gsm.ctas::rs,
+  Raw_Queries = gsm.ctas::queries, Raw_PD = gsm.ctas::pd
+)
 
-`ratio_missing_over_time()` computes a running proportion of missing (NA) values
-per subject and parameter. At timepoint $k$, the value is:
+wf_path <- function(layer) system.file("workflow", layer, package = "gsm.ctas")
+lMappingWorkflows   <- workr::MakeWorkflowList(strPath = wf_path("1_mappings"))
+lMetricWorkflows    <- workr::MakeWorkflowList(strPath = wf_path("2_metrics"))
+lReportingWorkflows <- workr::MakeWorkflowList(strPath = wf_path("3_reporting"))
 
-$$\text{ratio}_k = \frac{\sum_{i=1}^{k} \mathbf{1}[\text{value}_i = \text{NA}]}{k}$$
+lMapped <- workr::RunWorkflows(
+  lWorkflows = lMappingWorkflows,
+  lData = gsm.mapping::Ingest(lRaw, gsm.mapping::CombineSpecs(lMappingWorkflows))
+)
+lAnalysis <- workr::RunWorkflows(lWorkflows = lMetricWorkflows, lData = lMapped)
+lReporting <- workr::RunWorkflows(
+  lWorkflows = lReportingWorkflows,
+  lData = c(lMapped, list(lAnalyzed = lAnalysis,
+                          lMetricWorkflows = lMetricWorkflows))
+)
 
-A subject with no missing values always has ratio 0. One with all values missing
-has ratio 1.
-
-```{r ratio-missing-example}
-value <- c(10, NA, 30, NA, 50)
-subject_id <- rep("subj_1", 5)
-parameter_id <- rep("ALT", 5)
-
-ratio_missing_over_time(value, subject_id, parameter_id)
-```
-
-`Input_Labs()` produces these rows with `parameter_id = "LB_MISS_<LBTESTCD>"`
-and `parameter_category_3 = "ratio_missing"`. The missingness parameter shares
-the same `parameter_category_2` as its range-normalized sibling (e.g. both
-`LB_NORM_ALT` and `LB_MISS_ALT` have `parameter_category_2 = "ALT"`). In the
-app, these are displayed as a faceted pair: the upper facet shows the normalized
-values, the lower shows the missingness ratio.
-
-### Categorical encoding
-
-`encode_categorical()` one-hot encodes a categorical variable into a long format.
-Each observation is expanded into one row per category level, with `encoded = 1`
-where the observation matches the level and `encoded = 0` otherwise.
-
-```{r encode-example}
-responses <- c("CR", "PR", "SD", "PD", "CR", "SD")
-encoded <- encode_categorical(responses, prefix = "RS_OVRLRESP")
-head(encoded, 10)
-```
-
-`Input_RS()` uses this to transform `RSORRES` values. The resulting
-`parameter_id` values are `"RS_OVRLRESP=CR"`, `"RS_OVRLRESP=PD"`, etc., and
-`parameter_category_3 = "categorical"`. The app renders these as alluvial plots
-showing how response categories flow across visits.
-
-### Bar (single-timepoint categorical)
-
-`Input_BMI()` creates a screening-only weight category from vital signs.
-Weights are binned into categories (`< 60 kg`, `60-80 kg`, `80-100 kg`,
-`>= 100 kg`), then one-hot encoded like `Input_RS`. With only a single
-timepoint per subject, `parameter_category_3 = "bar"` signals that the app
-should render a bar chart rather than an alluvial plot.
-
-```{r bar-example, eval = FALSE}
-library(pharmaversesdtm)
-data("dm"); data("vs")
-
-bmi <- ctasapp::Input_BMI(dm, vs)
-head(bmi$parameters)
-```
-
-```
-  parameter_id                parameter_name parameter_category_1 parameter_category_2 parameter_category_3
-  VS_WEIGHT_CAT=60-80 kg     60-80 kg       Vital Signs          VS_WEIGHT_CAT        bar
-  VS_WEIGHT_CAT=80-100 kg    80-100 kg      Vital Signs          VS_WEIGHT_CAT        bar
-  VS_WEIGHT_CAT=>= 100 kg    >= 100 kg      Vital Signs          VS_WEIGHT_CAT        bar
-  VS_WEIGHT_CAT=< 60 kg      < 60 kg        Vital Signs          VS_WEIGHT_CAT        bar
-```
-
-### Plain numeric
-
-`Input_VS()` passes vital-sign measurements through without transformation.
-The raw `VSSTRESN` values become `result`, and `parameter_category_3 = "numeric"`.
-These are rendered as simple line plots in the app.
-
-```{r numeric-example, eval = FALSE}
-library(pharmaversesdtm)
-data("dm"); data("vs")
-
-vs_input <- ctasapp::Input_VS(dm, vs)
-head(vs_input$data[vs_input$data$parameter_id == "VS_SYSBP", ])
-```
-
-```
-  subject_id parameter_id timepoint_rank timepoint_1_name result
-  AB12345-01 VS_SYSBP              1       SCREENING 1      132
-  AB12345-01 VS_SYSBP              2       BASELINE          128
-  AB12345-01 VS_SYSBP              3       WEEK 2            130
-  ...
+# Writes results, input, untransformed, queries and pd as parquet
+gsm.ctas::Write_ctasapp(lReporting, "~/my_upload_files")
 ```
 
 
 ## Example plots
 
-The package bundles pre-computed sample data (`sample_sdtm_data` and
-`sample_sdtm_results`) derived from `pharmaversesdtm`. These can be used
-directly to generate all plot types.
+The package bundles the gsm.ctas output as `sample_data` and
+`sample_results`. These can be used directly to generate all plot types.
 
 ```{r prepare-measures}
-m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+m <- prepare_measures(sample_data, sample_results)
 ```
 
 ### Range-normalized lab values with missingness ratio
 
-The `ALT` parameter has both `LB_NORM_ALT` (range-normalized) and `LB_MISS_ALT`
-(missingness ratio). They are plotted together as a faceted pair.
-
 ```{r plot-range-norm, fig.height = 7}
-plot_timeseries(c("LB_NORM_ALT", "LB_MISS_ALT"), m, thresh = 1.3)
+plot_timeseries(c("RANGE_ALT", "MISS_ALT"), m, thresh = 1.3)
 ```
 
 ### Plain numeric vital signs
 
-Systolic blood pressure (`VS_SYSBP`) uses raw numeric values without
-normalization.
-
 ```{r plot-numeric}
-plot_timeseries("VS_SYSBP", m, thresh = 1.3)
+plot_timeseries("SYSBP", m, thresh = 1.3)
 ```
 
 ### Categorical (alluvial)
 
-Overall response (`RS_OVRLRESP`) categories are displayed as an alluvial plot
+Overall response (`OVRLRESP`) categories are displayed as an alluvial plot
 showing transitions across visits.
 
 ```{r plot-categorical, fig.height = 8}
-cat_ids <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+cat_ids <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 plot_categorical(cat_ids, m, thresh = 1.3)
 ```
 
 ### Bar (single-timepoint)
 
-Screening weight categories are displayed as a bar chart since there is only
-one timepoint per subject.
+BMI categories (`BMICAT`) are recorded once per subject, so the app renders
+them as a bar chart.
 
 ```{r plot-bar}
-bar_ids <- unique(m$parameter_id[grepl("^VS_WEIGHT_CAT=", m$parameter_id)])
+bar_ids <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
 plot_bar(bar_ids, m, thresh = 1.3)
 ```
 
@@ -288,8 +160,8 @@ files (CSV, Parquet, or RDA):
 
 | File | Required | Description |
 |:-----|:---------|:------------|
-| Results | Yes | Pre-joined `site_scores` + `timeseries` from `ctas::process_a_study()` |
-| Input | Yes | Pre-joined `data` + `subjects` + `parameters` (one row per observation) |
+| Results | Yes | Site scores with `parameter_id` per `timeseries_id` |
+| Input | Yes | One row per subject/timepoint/parameter (see above) |
 | Untransformed | No | Original values before transformation (for display in data tables) |
 | Queries | No | Clinical query records (overlaid as dots on plots) |
 | Protocol Deviations | No | SDTM DV-style deviations linked at site level (Protocol Deviations tab) |
@@ -303,14 +175,14 @@ filtering.
 
 ### Generating example upload files
 
-Use `generate_sample_csv()` to create a set of example CSV files from the
-bundled sample data. This is useful for trying the upload feature or as a
-template for your own data:
+The gsm.ctas upload files are shipped as parquet in
+`system.file("extdata", package = "ctasapp")`. Use `generate_sample_csv()`
+to copy them to a directory, as CSV (default) or parquet:
+
 ```{r generate-csv, eval = FALSE}
 generate_sample_csv("~/my_upload_files")
+generate_sample_csv("~/my_upload_files", format = "parquet")
 ```
 
-This writes `results.csv`, `input.csv`, `untransformed.csv`, `queries.csv`,
-and `pd.csv` into the specified directory. The files combine both sample
-datasets (`sample_ctas_data` as STUDY-001 and `sample_sdtm_data` as
-STUDY-002) into a multi-study upload example.
+This writes `results`, `input`, `untransformed`, `queries`, and `pd` files
+into the specified directory.

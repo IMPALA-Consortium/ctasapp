@@ -7,7 +7,7 @@
 prepare_score_table_multi(ctas_results, parameter_ids, features = NULL)
 }
 \arguments{
-\item{ctas_results}{List as returned by \code{\link[ctas:process_a_study]{ctas::process_a_study()}}.}
+\item{ctas_results}{List as returned by \code{ctas::process_a_study()}.}
 
 \item{parameter_ids}{Character vector of parameter IDs.}
 

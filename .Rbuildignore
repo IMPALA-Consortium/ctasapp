@@ -12,7 +12,7 @@
 ^pkgdown$
 ^TODO\.md$
 ^debug\.R$
-.*\.parquet$
+^[^/]*\.parquet$
 ^\.positai$
 ^\.claude$
 ^rsconnect$

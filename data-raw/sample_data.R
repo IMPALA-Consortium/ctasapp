@@ -1,40 +1,79 @@
-library(ctas)
+pkgload::load_all(".")
 
-pkgload::load_all(".", export_all = FALSE)
-
-data("ctas_data", package = "ctas")
-
-feats <- paste(
-  c(
-    "autocorr",
-    "average",
-    "own_site_simil_score",
-    "sd",
-    "unique_value_count_relative",
-    "lof",
-    "range"
-  ),
-  collapse = ";"
+lRaw <- list(
+  Raw_DM      = gsm.ctas::dm,
+  Raw_LB      = gsm.ctas::lb,
+  Raw_VS      = gsm.ctas::vs,
+  Raw_EG      = gsm.ctas::eg,
+  Raw_RS      = gsm.ctas::rs,
+  Raw_Queries = gsm.ctas::queries,
+  Raw_PD      = gsm.ctas::pd
 )
 
-ctas_results <- process_a_study(
-  data = ctas_data$data,
-  subjects = ctas_data$subjects,
-  parameters = ctas_data$parameters,
-  custom_timeseries = ctas_data$custom_timeseries,
-  custom_reference_groups = ctas_data$custom_reference_groups,
-  default_timeseries_features_to_calculate = feats,
-  default_minimum_timepoints_per_series = 3,
-  default_minimum_subjects_per_series = 3,
-  default_max_share_missing_timepoints_per_series = 0.5,
-  default_generate_change_from_baseline = FALSE,
-  autogenerate_timeseries = TRUE
+wf_path <- function(layer) system.file("workflow", layer, package = "gsm.ctas")
+lMappingWorkflows   <- workr::MakeWorkflowList(strPath = wf_path("1_mappings"))
+lMetricWorkflows    <- workr::MakeWorkflowList(strPath = wf_path("2_metrics"))
+lReportingWorkflows <- workr::MakeWorkflowList(strPath = wf_path("3_reporting"))
+
+lMapped <- workr::RunWorkflows(
+  lWorkflows = lMappingWorkflows,
+  lData = gsm.mapping::Ingest(lRaw, gsm.mapping::CombineSpecs(lMappingWorkflows))
 )
 
-sample_ctas_data <- ctas_data[c("data", "subjects", "parameters")]
-sample_ctas_data$queries <- simulate_query_data(sample_ctas_data, seed = 456)
-sample_ctas_data$pd <- simulate_pd_data(sample_ctas_data, seed = 654)
-sample_ctas_results <- ctas_results
+lAnalysis <- workr::RunWorkflows(
+  lWorkflows = lMetricWorkflows,
+  lData = lMapped
+)
 
-usethis::use_data(sample_ctas_data, overwrite = TRUE)
-usethis::use_data(sample_ctas_results, overwrite = TRUE)
+lReporting <- workr::RunWorkflows(
+  lWorkflows = lReportingWorkflows,
+  lData = c(lMapped, list(
+    lAnalyzed = lAnalysis,
+    lMetricWorkflows = lMetricWorkflows
+  ))
+)
+
+unlink(list.files("inst/extdata", pattern = "\\.(csv|parquet)$", full.names = TRUE))
+files <- gsm.ctas::Write_ctasapp(lReporting, "inst/extdata", strFormat = "parquet")
+files <- files[basename(files) %in%
+  paste0(c("results", "input", "untransformed", "queries", "pd"), ".parquet")]
+unlink(setdiff(
+  list.files("inst/extdata", pattern = "\\.parquet$", full.names = TRUE),
+  files
+))
+
+read_parquet <- function(name) {
+  f <- file.path("inst/extdata", paste0(name, ".parquet"))
+  if (file.exists(f)) read_upload_file(f, basename(f))
+}
+
+results_df <- read_parquet("results")
+input_df <- read_parquet("input")
+untransformed_df <- read_parquet("untransformed")
+queries_df <- read_parquet("queries")
+pd_df <- read_parquet("pd")
+
+errs <- c(
+  validate_upload_results(results_df),
+  validate_upload_input(input_df),
+  if (!is.null(untransformed_df)) validate_upload_untransformed(untransformed_df),
+  if (!is.null(queries_df)) validate_upload_queries(queries_df),
+  if (!is.null(pd_df)) validate_upload_pd(pd_df)
+)
+if (length(errs) > 0) stop(paste(errs, collapse = "\n"))
+
+reconstructed <- reconstruct_from_upload(
+  input_df, aggregate_results(results_df),
+  untransformed_df, queries_df, pd_df
+)
+
+sample_data <- reconstructed$ctas_data
+sample_results <- reconstructed$ctas_results
+
+lookup <- build_param_lookup(prepare_measures(sample_data, sample_results))
+if (!identical(lookup$plot_type[lookup$display_id == "BMICAT"], "bar")) {
+  stop("BMICAT is not detected as a bar field")
+}
+
+usethis::use_data(sample_data, overwrite = TRUE)
+usethis::use_data(sample_results, overwrite = TRUE)

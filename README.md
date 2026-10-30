@@ -32,9 +32,16 @@ library(ctasapp)
 run_ctas_app()
 ```
 
-Once the app is running, click **Use Sample Data** on the Data tab, then
-switch to the **Fields** tab to explore parameter-level timeseries and
-site outlier scores.
+Once the app is running, select **Sample data (gsm.ctas)** as data
+source on the Data tab and click **Load Data**, then switch to the
+**Fields** tab to explore parameter-level timeseries and site outlier
+scores.
+
+The sample data is generated with
+[{gsm.ctas}](https://github.com/IMPALA-Consortium/gsm.ctas). Its upload
+files are shipped as parquet in
+`system.file("extdata", package = "ctasapp")`; use
+`generate_sample_csv()` to export them as CSV.
 
 ## Configuration
 
@@ -102,6 +109,7 @@ embedded:
   input: data/input.parquet
   untransformed: data/untransformed.parquet  # optional
   queries: data/queries.parquet              # optional
+  pd: data/pd.parquet                        # optional (protocol deviations)
 ```
 
 Any key you omit falls back to the built-in default.

@@ -1,5 +1,5 @@
 test_that("prepare_measures returns expected structure", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   expect_s3_class(m, "data.frame")
   expect_true(nrow(m) > 0)
@@ -18,14 +18,14 @@ test_that("prepare_measures returns expected structure", {
 })
 
 test_that("prepare_measures covers all parameters", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  input_params <- unique(sample_ctas_data$data$parameter_id)
+  m <- prepare_measures(sample_data, sample_results)
+  input_params <- unique(sample_data$data$parameter_id)
   output_params <- unique(m$parameter_id)
   expect_equal(sort(output_params), sort(input_params))
 })
 
-test_that("prepare_measures works with SDTM sample data", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+test_that("prepare_measures includes parameter categories", {
+  m <- prepare_measures(sample_data, sample_results)
 
   expect_s3_class(m, "data.frame")
   expect_true(nrow(m) > 0)
@@ -34,7 +34,7 @@ test_that("prepare_measures works with SDTM sample data", {
 })
 
 test_that("prepare_score_table returns wide format with max_score", {
-  st <- prepare_score_table(sample_ctas_results, "param1")
+  st <- prepare_score_table(sample_results, "SYSBP")
 
   expect_s3_class(st, "data.frame")
   expect_true(nrow(st) > 0)
@@ -49,7 +49,7 @@ test_that("prepare_score_table returns wide format with max_score", {
 })
 
 test_that("prepare_score_table values are rounded to 2 decimals", {
-  st <- prepare_score_table(sample_ctas_results, "param1")
+  st <- prepare_score_table(sample_results, "SYSBP")
   feature_cols <- setdiff(names(st), c("site", "max_score"))
 
   for (col in feature_cols) {
@@ -60,31 +60,30 @@ test_that("prepare_score_table values are rounded to 2 decimals", {
 })
 
 test_that("prepare_score_table_multi returns same as prepare_score_table for single param", {
-  st_single <- prepare_score_table(sample_ctas_results, "param1")
-  st_multi <- prepare_score_table_multi(sample_ctas_results, "param1")
+  st_single <- prepare_score_table(sample_results, "SYSBP")
+  st_multi <- prepare_score_table_multi(sample_results, "SYSBP")
   expect_equal(st_single, st_multi)
 })
 
 test_that("prepare_score_table_multi handles multiple parameter_ids", {
-  params <- unique(sample_sdtm_results$timeseries$parameter_id)
-  cat_params <- params[grepl("^RS_OVRLRESP=", params)]
-  if (length(cat_params) > 0) {
-    st <- prepare_score_table_multi(sample_sdtm_results, cat_params)
-    expect_s3_class(st, "data.frame")
-    expect_true("site" %in% names(st))
-    expect_true("max_score" %in% names(st))
-  }
+  params <- unique(sample_results$site_scores$parameter_id)
+  cat_params <- params[grepl("^CAT_OVRLRESP=", params)]
+  expect_true(length(cat_params) > 1)
+  st <- prepare_score_table_multi(sample_results, cat_params)
+  expect_s3_class(st, "data.frame")
+  expect_true("site" %in% names(st))
+  expect_true("max_score" %in% names(st))
 })
 
 test_that("prepare_score_table_multi returns empty for non-matching params", {
-  st <- prepare_score_table_multi(sample_ctas_results, "nonexistent_param")
+  st <- prepare_score_table_multi(sample_results, "nonexistent_param")
   expect_equal(nrow(st), 0)
 })
 
 test_that("prepare_ts_data filters by parameter and threshold", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
-  td <- prepare_ts_data(m, "param1", thresh = 1.3)
+  td <- prepare_ts_data(m, "SYSBP", thresh = 1.3)
 
   expect_s3_class(td, "data.frame")
   expect_true(all(td$max_score > 1.3))
@@ -97,16 +96,16 @@ test_that("prepare_ts_data filters by parameter and threshold", {
 })
 
 test_that("prepare_ts_data returns empty data frame with high threshold", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  td <- prepare_ts_data(m, "param1", thresh = 99999)
+  m <- prepare_measures(sample_data, sample_results)
+  td <- prepare_ts_data(m, "SYSBP", thresh = 99999)
 
   expect_s3_class(td, "data.frame")
   expect_equal(nrow(td), 0)
 })
 
 test_that("prepare_ts_data is sorted by site, subject, timepoint", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  td <- prepare_ts_data(m, "param1", thresh = 0)
+  m <- prepare_measures(sample_data, sample_results)
+  td <- prepare_ts_data(m, "SYSBP", thresh = 0)
 
   if (nrow(td) > 1) {
     sorted <- td[order(td$site, td$subject_id, td$timepoint_rank), ]
@@ -115,27 +114,26 @@ test_that("prepare_ts_data is sorted by site, subject, timepoint", {
 })
 
 test_that("prepare_ts_data_multi handles multiple params", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[grepl("^CAT_OVRLRESP=", m$parameter_id)])
+  expect_true(length(cat_params) > 1)
 
-  if (length(cat_params) > 0) {
-    td <- prepare_ts_data_multi(m, cat_params, thresh = 0)
-    expect_s3_class(td, "data.frame")
-    expect_true("parameter_id" %in% names(td))
-  }
+  td <- prepare_ts_data_multi(m, cat_params, thresh = 0)
+  expect_s3_class(td, "data.frame")
+  expect_true("parameter_id" %in% names(td))
 })
 
 test_that("prepare_ts_data_multi returns empty with high threshold", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  td <- prepare_ts_data_multi(m, "param1", thresh = 99999)
+  m <- prepare_measures(sample_data, sample_results)
+  td <- prepare_ts_data_multi(m, "SYSBP", thresh = 99999)
   expect_equal(nrow(td), 0)
 })
 
 test_that("prepare_ts_data_multi joins untransformed for numeric labs", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
 
-  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT|^LB_MISS_ALT", m$parameter_id)])
+  lab_params <- unique(m$parameter_id[grepl("^RANGE_ALT$|^MISS_ALT$", m$parameter_id)])
   td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut)
 
   expect_s3_class(td, "data.frame")
@@ -146,10 +144,10 @@ test_that("prepare_ts_data_multi joins untransformed for numeric labs", {
 })
 
 test_that("prepare_ts_data_multi joins untransformed for categorical", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
 
-  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  cat_params <- unique(m$parameter_id[grepl("^CAT_OVRLRESP=", m$parameter_id)])
   td <- prepare_ts_data_multi(m, cat_params, thresh = 0, untransformed = ut)
 
   expect_s3_class(td, "data.frame")
@@ -158,14 +156,16 @@ test_that("prepare_ts_data_multi joins untransformed for categorical", {
   expect_false("lower" %in% names(td))
 })
 
-test_that("prepare_ts_data_multi joins untransformed for VS (no ranges)", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
+test_that("prepare_ts_data_multi drops all-NA untransformed columns", {
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
 
-  vs_params <- unique(m$parameter_id[grepl("^VS_SYSBP", m$parameter_id)])
+  # gsm.ctas ships vital signs untransformed without reference range or category
+  vs_params <- unique(m$parameter_id[grepl("^SYSBP$", m$parameter_id)])
   td <- prepare_ts_data_multi(m, vs_params, thresh = 0, untransformed = ut)
 
   expect_s3_class(td, "data.frame")
+  expect_true("result" %in% names(td))
   expect_true("original_value" %in% names(td))
   expect_false("lower" %in% names(td))
   expect_false("upper" %in% names(td))
@@ -173,9 +173,9 @@ test_that("prepare_ts_data_multi joins untransformed for VS (no ranges)", {
 })
 
 test_that("prepare_ts_data_multi with NULL untransformed shows result only", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
-  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT", m$parameter_id)])
+  lab_params <- unique(m$parameter_id[grepl("^RANGE_ALT$", m$parameter_id)])
   td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = NULL)
 
   expect_true("result" %in% names(td))
@@ -184,10 +184,10 @@ test_that("prepare_ts_data_multi with NULL untransformed shows result only", {
 })
 
 test_that("prepare_ts_data_multi preserves row count with untransformed", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
 
-  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT|^LB_MISS_ALT", m$parameter_id)])
+  lab_params <- unique(m$parameter_id[grepl("^RANGE_ALT$|^MISS_ALT$", m$parameter_id)])
   td_with <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut)
   td_without <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = NULL)
 
@@ -195,18 +195,18 @@ test_that("prepare_ts_data_multi preserves row count with untransformed", {
 })
 
 test_that("prepare_ts_data_multi passes through extra untransformed columns", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
   ut$comment <- paste0("note-", seq_len(nrow(ut)))
   ut$flag <- rep(c(TRUE, FALSE), length.out = nrow(ut))
 
-  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT", m$parameter_id)])
+  lab_params <- unique(m$parameter_id[grepl("^RANGE_ALT$", m$parameter_id)])
   td <- prepare_ts_data_multi(m, lab_params, thresh = 0, untransformed = ut)
 
   expect_true("comment" %in% names(td))
   expect_true("flag" %in% names(td))
 
-  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  cat_params <- unique(m$parameter_id[grepl("^CAT_OVRLRESP=", m$parameter_id)])
   td_cat <- prepare_ts_data_multi(m, cat_params, thresh = 0,
                                   untransformed = ut, plot_type = "categorical")
   expect_true("comment" %in% names(td_cat))
@@ -214,9 +214,9 @@ test_that("prepare_ts_data_multi passes through extra untransformed columns", {
 })
 
 test_that("prepare_ts_data_multi joins on study when subject_id reused across studies", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
-  lab_params <- unique(m$parameter_id[grepl("^LB_NORM_ALT", m$parameter_id)])
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
+  lab_params <- unique(m$parameter_id[grepl("^RANGE_ALT$", m$parameter_id)])
 
   # Pick one real (subject_id, parameter_category_2, timepoint_1_name) row and
   # synthesise a second study sharing the same subject_id but a different
@@ -241,34 +241,34 @@ test_that("prepare_ts_data_multi joins on study when subject_id reused across st
 })
 
 test_that("recompute_max_score with NULL features returns same max_score", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  m2 <- recompute_max_score(m, sample_ctas_results, features = NULL)
+  m <- prepare_measures(sample_data, sample_results)
+  m2 <- recompute_max_score(m, sample_results, features = NULL)
   expect_equal(m2$max_score, m$max_score)
 })
 
 test_that("recompute_max_score with subset features changes max_score", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  all_feats <- unique(sample_sdtm_results$site_scores$feature)
+  m <- prepare_measures(sample_data, sample_results)
+  all_feats <- unique(sample_results$site_scores$feature)
   one_feat <- all_feats[1]
 
-  m2 <- recompute_max_score(m, sample_sdtm_results, features = one_feat)
+  m2 <- recompute_max_score(m, sample_results, features = one_feat)
   expect_true(all(m2$max_score <= m$max_score))
   expect_true(all(m2$max_score >= 0))
 })
 
 test_that("recompute_max_score with non-existent feature zeroes scores", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  m2 <- recompute_max_score(m, sample_ctas_results, features = "nonexistent_feat")
+  m <- prepare_measures(sample_data, sample_results)
+  m2 <- recompute_max_score(m, sample_results, features = "nonexistent_feat")
   expect_true(all(m2$max_score == 0))
 })
 
 test_that("prepare_score_table_multi features param filters columns", {
-  all_feats <- unique(sample_sdtm_results$site_scores$feature)
+  all_feats <- unique(sample_results$site_scores$feature)
   one_feat <- all_feats[1]
 
-  params <- unique(sample_sdtm_results$timeseries$parameter_id)[1]
-  st_all <- prepare_score_table_multi(sample_sdtm_results, params)
-  st_one <- prepare_score_table_multi(sample_sdtm_results, params,
+  params <- unique(sample_results$site_scores$parameter_id)[1]
+  st_all <- prepare_score_table_multi(sample_results, params)
+  st_one <- prepare_score_table_multi(sample_results, params,
                                       features = one_feat)
 
   all_feat_cols <- setdiff(names(st_all), c("site", "max_score"))
@@ -279,21 +279,20 @@ test_that("prepare_score_table_multi features param filters columns", {
 })
 
 
-test_that("VS_HEIGHT has scores in SDTM sample results", {
-  ts <- sample_sdtm_results$timeseries
-  expect_true("VS_HEIGHT" %in% ts$parameter_id)
+test_that("HEIGHT has scores in sample results", {
+  expect_true("HEIGHT" %in% sample_results$site_scores$parameter_id)
 
-  st <- prepare_score_table_multi(sample_sdtm_results, "VS_HEIGHT")
+  st <- prepare_score_table_multi(sample_results, "HEIGHT")
   expect_true(nrow(st) > 0)
   expect_true(any(st$max_score > 0))
 })
 
-test_that("VS_WEIGHT_CAT has scores in SDTM sample results", {
-  ts <- sample_sdtm_results$timeseries
-  wt_ids <- ts$parameter_id[grepl("^VS_WEIGHT_CAT=", ts$parameter_id)]
-  expect_true(length(wt_ids) > 0)
+test_that("BMICAT has scores in sample results", {
+  ids <- sample_results$site_scores$parameter_id
+  bmi_ids <- ids[grepl("^CAT_BMICAT=", ids)]
+  expect_true(length(bmi_ids) > 0)
 
-  st <- prepare_score_table_multi(sample_sdtm_results, unique(wt_ids))
+  st <- prepare_score_table_multi(sample_results, unique(bmi_ids))
   expect_true(nrow(st) > 0)
   expect_true(any(st$max_score > 0))
 })
@@ -608,9 +607,9 @@ test_that("aggregate_results returns NA for all-NA groups", {
 # -- prepare_ts_data_multi categorical branches --------------------------------
 
 test_that("prepare_ts_data_multi categorical with untransformed selects original_category", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
-  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
+  cat_params <- unique(m$parameter_id[grepl("^CAT_OVRLRESP=", m$parameter_id)])
 
   td <- prepare_ts_data_multi(m, cat_params, thresh = 0,
                               untransformed = ut, plot_type = "categorical")
@@ -622,8 +621,8 @@ test_that("prepare_ts_data_multi categorical with untransformed selects original
 })
 
 test_that("prepare_ts_data_multi categorical without untransformed returns minimal cols", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[grepl("^RS_OVRLRESP=", m$parameter_id)])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[grepl("^CAT_OVRLRESP=", m$parameter_id)])
 
   td <- prepare_ts_data_multi(m, cat_params, thresh = 0,
                               untransformed = NULL, plot_type = "categorical")
@@ -631,21 +630,4 @@ test_that("prepare_ts_data_multi categorical without untransformed returns minim
   expect_true(nrow(td) > 0)
   expect_true("site" %in% names(td))
   expect_false("result" %in% names(td))
-})
-
-# -- generate_sample_csv with NULL sdtm_categories ----------------------------
-
-test_that("generate_sample_csv with NULL sdtm_categories exports all params", {
-  tmp_dir <- file.path(tempdir(), "csv_all")
-  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
-
-  files <- generate_sample_csv(tmp_dir, sdtm_categories = NULL)
-  expect_true(file.exists(file.path(tmp_dir, "input.csv")))
-  expect_true(file.exists(file.path(tmp_dir, "results.csv")))
-
-  input <- utils::read.csv(file.path(tmp_dir, "input.csv"))
-  # With NULL categories, all SDTM parameters should be included
-  sdtm_params <- unique(sample_sdtm_data$parameters$parameter_id)
-  input_params <- unique(input$parameter_id[input$study == "STUDY-002"])
-  expect_true(all(sdtm_params %in% input_params))
 })

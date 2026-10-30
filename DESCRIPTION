@@ -13,6 +13,7 @@ Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.1.0)
 Imports:
+    arrow,
     bslib,
     dplyr,
     forcats,
@@ -29,18 +30,22 @@ Imports:
     tidyr,
     yaml
 Suggests:
-    arrow,
     covr,
-    ctas,
+    gsm.ctas,
+    gsm.mapping,
     knitr,
-    pharmaversesdtm,
     pkgload,
     rmarkdown,
     testthat (>= 3.0.0),
-    withr
+    usethis,
+    withr,
+    workr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Remotes:
-    IMPALA-Consortium/ctas
+    IMPALA-Consortium/gsm.ctas,
+    Gilead-Public/workr@main,
+    Gilead-Public/gsm.mapping@main,
+    Gilead-Public/gsm.core@main
 LazyData: true
 Config/roxygen2/version: 8.0.0

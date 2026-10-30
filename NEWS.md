@@ -2,11 +2,28 @@
 * control linkage between score tables, plots and data tables with radio button
 * clear missingness outlier indication
 * clear failure and bug reporting
+* bug icons reflect CTAS scores: purple when only missingness parameters are
+  scored, grey when no parameter of the field is scored
+* fields without any CTAS scores show a site-only table in Regular Scores
+  that drives the plot and source data
 * categorical fields with a single timepoint per subject are plotted as bar
   charts automatically, no `parameter_category_3 = "bar"` required
 * new Protocol Deviations tab in Field Detail (site-level linkage) with
-  matching upload/embedded/sample workflow (`simulate_pd_data()`,
-  `validate_upload_pd()`, `pd` element in sample data and embedded config)
+  matching upload/embedded/sample workflow (`validate_upload_pd()`, `pd`
+  element in sample data and embedded config)
+* sample data is now generated with gsm.ctas: `sample_data` and
+  `sample_results` replace `sample_ctas_*` and `sample_sdtm_*`, the data
+  source dropdown offers a single "Sample data (gsm.ctas)" option
+* gsm.ctas upload files are shipped as parquet in `inst/extdata` (~2 MB);
+  `generate_sample_csv()` copies them as CSV or parquet (`format` argument,
+  `sdtm_categories` argument removed)
+* `arrow` moved from Suggests to Imports, parquet uploads always work
+* removed data-generation helpers now provided by gsm.ctas: `Input_Labs()`,
+  `Input_VS()`, `Input_RS()`, `Input_BMI()`, `combine_ctas_input()`,
+  `inject_missingness()`, `simulate_query_data()`, `simulate_pd_data()`,
+  `normalize_by_range()`, `ratio_missing_over_time()`,
+  `recalculate_timepoint_rank()`, `encode_categorical()`,
+  `arrange_timepoints()`
 
 # ctasapp 0.4.0
 * standard config renamed to ctasapp.yml

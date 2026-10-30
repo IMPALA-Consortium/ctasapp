@@ -9,6 +9,7 @@ inst/doc
 .Renviron
 docs
 *.parquet
+!inst/extdata/*.parquet
 TODO.md
 debug.R
 .positai

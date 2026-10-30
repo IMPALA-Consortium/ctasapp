@@ -15,13 +15,9 @@ read_upload_file <- function(path, name) {
     return(utils::read.csv(path, stringsAsFactors = FALSE))
   }
 
-  if (ext == "parquet") { # nocov start
-    if (!requireNamespace("arrow", quietly = TRUE)) {
-      stop("Package 'arrow' is required to read parquet files. ",
-           "Install it with: install.packages('arrow')", call. = FALSE)
-    }
+  if (ext == "parquet") {
     return(as.data.frame(arrow::read_parquet(path)))
-  } # nocov end
+  }
 
   if (ext %in% c("rda", "rdata")) {
     env <- new.env(parent = emptyenv())
@@ -64,8 +60,7 @@ mod_DataInput_ui <- function(id) {
         "Data Source",
         choices = c(
           "Upload files" = "upload",
-          "ctas sample" = "ctas",
-          "SDTM sample (pharmaversesdtm)" = "sdtm"
+          "Sample data (gsm.ctas)" = "sample"
         ),
         selected = "upload"
       ),
@@ -254,8 +249,7 @@ mod_DataInput_server <- function(id) {
         choices = c(
           "Upload files" = "upload",
           "Embedded data set" = "embedded",
-          "ctas sample" = "ctas",
-          "SDTM sample (pharmaversesdtm)" = "sdtm"
+          "Sample data (gsm.ctas)" = "sample"
         ),
         selected = shiny::isolate(input$data_source) %||% "upload"
       )
@@ -498,20 +492,13 @@ mod_DataInput_server <- function(id) {
 
       shiny::withProgress(message = "Loading data...", value = 0, {
 
-      if (source == "ctas") {
-        shiny::setProgress(0.1, detail = "Loading ctas sample")
-        ctas_log("Loading ctas sample data...")
-        ctas_data <- ctasapp::sample_ctas_data
-        ctas_results <- ctasapp::sample_ctas_results
-        label <- "ctas sample"
-        ctas_log("ctas sample loaded OK")
-      } else if (source == "sdtm") {
-        shiny::setProgress(0.1, detail = "Loading SDTM sample")
-        ctas_log("Loading SDTM sample data...")
-        ctas_data <- ctasapp::sample_sdtm_data
-        ctas_results <- ctasapp::sample_sdtm_results
-        label <- "SDTM sample"
-        ctas_log("SDTM sample loaded OK")
+      if (source == "sample") {
+        shiny::setProgress(0.1, detail = "Loading sample data")
+        ctas_log("Loading gsm.ctas sample data...")
+        ctas_data <- ctasapp::sample_data
+        ctas_results <- ctasapp::sample_results
+        label <- "Sample data (gsm.ctas)"
+        ctas_log("Sample data loaded OK")
       } else if (source == "embedded") { # nocov start
         ctas_log("Embedded mode: reading configured files...")
         paths <- get_embedded_paths()

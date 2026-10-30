@@ -23,8 +23,8 @@ test_that("score_to_color is vectorised", {
 })
 
 test_that("plot_timeseries returns a ggplot/patchwork object", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  p <- plot_timeseries("param1", m, thresh = 1.3)
+  m <- prepare_measures(sample_data, sample_results)
+  p <- plot_timeseries("SYSBP", m, thresh = 1.3)
 
   expect_true(
     inherits(p, "ggplot") || inherits(p, "patchwork"),
@@ -33,16 +33,16 @@ test_that("plot_timeseries returns a ggplot/patchwork object", {
 })
 
 test_that("plot_timeseries handles non-existent parameter", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
   p <- plot_timeseries("nonexistent_param", m, thresh = 1.3)
 
   expect_s3_class(p, "ggplot")
 })
 
 test_that("plot_timeseries with explicit sites argument works", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  sites <- unique(m$site[m$parameter_id == "param1"])[1:2]
-  p <- plot_timeseries("param1", m, thresh = 1.3, sites = sites)
+  m <- prepare_measures(sample_data, sample_results)
+  sites <- unique(m$site[m$parameter_id == "SYSBP"])[1:2]
+  p <- plot_timeseries("SYSBP", m, thresh = 1.3, sites = sites)
 
   expect_true(
     inherits(p, "ggplot") || inherits(p, "patchwork")
@@ -50,8 +50,8 @@ test_that("plot_timeseries with explicit sites argument works", {
 })
 
 test_that("plot_timeseries with zero threshold shows all sites", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  p <- plot_timeseries("param1", m, thresh = 0)
+  m <- prepare_measures(sample_data, sample_results)
+  p <- plot_timeseries("SYSBP", m, thresh = 0)
 
   expect_true(
     inherits(p, "ggplot") || inherits(p, "patchwork")
@@ -59,8 +59,8 @@ test_that("plot_timeseries with zero threshold shows all sites", {
 })
 
 test_that("plot_timeseries with very high threshold still works", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
-  p <- plot_timeseries("param1", m, thresh = 99999)
+  m <- prepare_measures(sample_data, sample_results)
+  p <- plot_timeseries("SYSBP", m, thresh = 99999)
 
   expect_true(
     inherits(p, "ggplot") || inherits(p, "patchwork")
@@ -68,7 +68,7 @@ test_that("plot_timeseries with very high threshold still works", {
 })
 
 test_that("plot_timeseries with multiple param_ids (norm+missing) facets by parameter_name", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   lookup <- build_param_lookup(m)
   alb <- lookup[lookup$display_id == "ALB", ]
   p <- plot_timeseries(alb$parameter_ids[[1]], m, thresh = 0)
@@ -79,7 +79,7 @@ test_that("plot_timeseries with multiple param_ids (norm+missing) facets by para
 })
 
 test_that("plot_timeseries adds ref lines for range_normalized data", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   lookup <- build_param_lookup(m)
   alb <- lookup[lookup$display_id == "ALB", ]
   p <- plot_timeseries(alb$parameter_ids[[1]], m, thresh = 0)
@@ -103,36 +103,32 @@ test_that("format_score handles vectors", {
 })
 
 test_that("get_plot_visit_levels returns visit labels for categorical with dup handling", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
-  if (length(cat_params) > 0) {
-    levels <- get_plot_visit_levels(cat_params, m, plot_type = "categorical")
-    expect_type(levels, "character")
-    expect_true(length(levels) > 0)
-  }
+  levels <- get_plot_visit_levels(cat_params, m, plot_type = "categorical")
+  expect_type(levels, "character")
+  expect_true(length(levels) > 0)
 })
 
 test_that("get_plot_visit_levels returns visit labels for bar without dup handling", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+  m <- prepare_measures(sample_data, sample_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
 
-  if (length(bar_params) > 0) {
-    levels <- get_plot_visit_levels(bar_params, m, plot_type = "bar")
-    expect_type(levels, "character")
-    expect_true(length(levels) > 0)
-  }
+  levels <- get_plot_visit_levels(bar_params, m, plot_type = "bar")
+  expect_type(levels, "character")
+  expect_true(length(levels) > 0)
 })
 
 test_that("get_plot_visit_levels returns empty for non-existent params", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   levels <- get_plot_visit_levels("NONEXIST=X", m, plot_type = "categorical")
   expect_length(levels, 0)
 })
 
 test_that("plot_categorical returns ggplot (alluvial or bar fallback)", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     p <- plot_categorical(cat_params, m, thresh = 0)
@@ -141,15 +137,15 @@ test_that("plot_categorical returns ggplot (alluvial or bar fallback)", {
 })
 
 test_that("plot_categorical handles non-existent parameter", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   p <- plot_categorical("NONEXIST=X", m, thresh = 0)
   expect_s3_class(p, "ggplot")
 })
 
 test_that("plot_categorical with explicit sites works", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   sites <- unique(m$site)[1:2]
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     p <- plot_categorical(cat_params, m, thresh = 0, sites = sites)
@@ -158,8 +154,8 @@ test_that("plot_categorical with explicit sites works", {
 })
 
 test_that("plot_categorical aggregates unflagged sites into 'unflagged' panel", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     max_score <- max(m$max_score[m$parameter_id %in% cat_params], na.rm = TRUE)
@@ -177,24 +173,23 @@ test_that("plot_categorical aggregates unflagged sites into 'unflagged' panel", 
 })
 
 test_that("plot_bar returns ggplot", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+  m <- prepare_measures(sample_data, sample_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
+  expect_true(length(bar_params) > 0)
 
-  if (length(bar_params) > 0) {
-    p <- plot_bar(bar_params, m, thresh = 0)
-    expect_s3_class(p, "ggplot")
-  }
+  p <- plot_bar(bar_params, m, thresh = 0)
+  expect_s3_class(p, "ggplot")
 })
 
 test_that("plot_bar handles non-existent parameter", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   p <- plot_bar("NONEXIST=X", m, thresh = 0)
   expect_s3_class(p, "ggplot")
 })
 
 test_that("plot_bar dispatches to stacked bar with >3 timepoints", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
   if (length(cat_params) > 0 && dplyr::n_distinct(m$timepoint_1_name[m$parameter_id %in% cat_params]) > 3) {
     p <- plot_bar(cat_params, m, thresh = 0)
     expect_s3_class(p, "ggplot")
@@ -202,9 +197,9 @@ test_that("plot_bar dispatches to stacked bar with >3 timepoints", {
 })
 
 test_that("plot_bar with explicit sites works", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   sites <- unique(m$site)[1:2]
-  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+  bar_params <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
 
   if (length(bar_params) > 0) {
     p <- plot_bar(bar_params, m, thresh = 0, sites = sites)
@@ -213,8 +208,8 @@ test_that("plot_bar with explicit sites works", {
 })
 
 test_that("plot_bar aggregates unflagged sites into 'unflagged' panel", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+  m <- prepare_measures(sample_data, sample_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
 
   if (length(bar_params) > 0) {
     max_score <- max(m$max_score[m$parameter_id %in% bar_params], na.rm = TRUE)
@@ -282,8 +277,8 @@ test_that("plot_cat_bar_ci returns ggplot", {
 })
 
 test_that("plot_categorical falls back to stacked bars when alluvial fails (>3 tps)", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     local_mocked_bindings(try_alluvial = function(df_plot) NULL)
@@ -316,8 +311,8 @@ test_that("plot_categorical falls back to CI bars when alluvial fails (<=3 tps)"
 })
 
 test_that("plot_categorical respects custom visit_order", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     p_default <- plot_categorical(cat_params, m, thresh = 0)
@@ -338,8 +333,8 @@ test_that("plot_categorical respects custom visit_order", {
 })
 
 test_that("plot_categorical ignores incomplete visit_order", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     p <- plot_categorical(cat_params, m, thresh = 0,
@@ -349,8 +344,8 @@ test_that("plot_categorical ignores incomplete visit_order", {
 })
 
 test_that("plot_bar respects custom visit_order", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+  m <- prepare_measures(sample_data, sample_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
 
   if (length(bar_params) > 0) {
     visit_labels <- m |>
@@ -367,8 +362,8 @@ test_that("plot_bar respects custom visit_order", {
 })
 
 test_that("plot_bar ignores incomplete visit_order", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  bar_params <- unique(m$parameter_id[m$parameter_category_3 == "bar"])
+  m <- prepare_measures(sample_data, sample_results)
+  bar_params <- unique(m$parameter_id[m$parameter_category_2 == "BMICAT"])
 
   if (length(bar_params) > 0) {
     p <- plot_bar(bar_params, m, thresh = 0,
@@ -379,8 +374,8 @@ test_that("plot_bar ignores incomplete visit_order", {
 
 test_that("plot_cat_bar_stacked works with many timepoints in plot_bar dispatch", {
   # 4+ timepoints => stacked bar path in plot_bar
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  cat_params <- unique(m$parameter_id[m$parameter_category_3 == "categorical"])
+  m <- prepare_measures(sample_data, sample_results)
+  cat_params <- unique(m$parameter_id[m$parameter_category_2 == "OVRLRESP"])
 
   if (length(cat_params) > 0) {
     # Categorical data has many timepoints, so plot_categorical fallback
@@ -404,8 +399,8 @@ test_that("plot_cat_bar_stacked works with many timepoints in plot_bar dispatch"
 # --- query data overlay tests -----------------------------------------------
 
 test_that("plot_timeseries with query_data returns valid plot", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  qd <- sample_sdtm_data$queries
+  m <- prepare_measures(sample_data, sample_results)
+  qd <- sample_data$queries
   num_params <- unique(m$parameter_id[m$parameter_category_3 == "numeric"])
 
   p <- plot_timeseries(num_params[1], m, thresh = 0, query_data = qd)
@@ -413,8 +408,8 @@ test_that("plot_timeseries with query_data returns valid plot", {
 })
 
 test_that("plot_timeseries with query_data overlays query dots", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  qd <- sample_sdtm_data$queries
+  m <- prepare_measures(sample_data, sample_results)
+  qd <- sample_data$queries
   num_params <- unique(m$parameter_id[m$parameter_category_3 %in%
                                          c("range_normalized", "ratio_missing")])
 
@@ -425,7 +420,7 @@ test_that("plot_timeseries with query_data overlays query dots", {
 })
 
 test_that("plot_timeseries with NULL query_data works as before", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   num_params <- unique(m$parameter_id[m$parameter_category_3 == "numeric"])
 
   p <- plot_timeseries(num_params[1], m, thresh = 0, query_data = NULL)
@@ -433,7 +428,7 @@ test_that("plot_timeseries with NULL query_data works as before", {
 })
 
 test_that("plot_timeseries with empty query_data does not error", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   num_params <- unique(m$parameter_id[m$parameter_category_3 == "numeric"])
   empty_qd <- data.frame(
     subject_id = character(0), parameter_id = character(0),

@@ -188,14 +188,14 @@ test_that("render_score_dt defaults to outlier filtering without selected sites"
 })
 
 
-test_that("mod_FieldDetail_server renders outputs with ctas sample", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+test_that("mod_FieldDetail_server renders outputs with sample data", {
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
@@ -215,13 +215,13 @@ test_that("mod_FieldDetail_server renders outputs with ctas sample", {
 })
 
 test_that("mod_FieldDetail_server param_outliers reacts to threshold changes", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -238,14 +238,14 @@ test_that("mod_FieldDetail_server param_outliers reacts to threshold changes", {
   )
 })
 
-test_that("mod_FieldDetail_server handles SDTM sample data", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+test_that("mod_FieldDetail_server detects all plot types in sample data", {
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
@@ -262,13 +262,13 @@ test_that("mod_FieldDetail_server handles SDTM sample data", {
 })
 
 test_that("mod_FieldDetail_server dispatches categorical plot", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -286,13 +286,13 @@ test_that("mod_FieldDetail_server dispatches categorical plot", {
 })
 
 test_that("mod_FieldDetail_server dispatches bar plot", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -310,13 +310,13 @@ test_that("mod_FieldDetail_server dispatches bar plot", {
 })
 
 test_that("mod_FieldDetail_server dispatches numeric plot with norm+missing", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -333,10 +333,10 @@ test_that("mod_FieldDetail_server dispatches numeric plot with norm+missing", {
   )
 })
 
-test_that("mod_FieldDetail_server score_table_regular validate guard fires for unscored param", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+test_that("mod_FieldDetail_server score_table_regular shows site-only table for unscored param", {
+  m <- prepare_measures(sample_data, sample_results)
 
-  fake_results <- sample_ctas_results
+  fake_results <- sample_results
   fake_results$timeseries <- fake_results$timeseries[0, ]
   fake_results$site_scores <- fake_results$site_scores[0, ]
 
@@ -353,19 +353,19 @@ test_that("mod_FieldDetail_server score_table_regular validate guard fires for u
       lookup <- rctv_param_lookup()
       session$setInputs(selected_param = lookup$display_id[1])
 
-      expect_error(output$score_table_regular, class = "shiny.silent.error")
+      expect_no_error(output$score_table_regular)
     }
   )
 })
 
 test_that("mod_FieldDetail_server ts_data_table validate guard fires with high threshold", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 99999, include_miss = TRUE)
@@ -380,15 +380,15 @@ test_that("mod_FieldDetail_server ts_data_table validate guard fires with high t
 })
 
 
-test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  ut <- sample_sdtm_data$untransformed
+test_that("mod_FieldDetail_server passes untransformed to ts_data_table", {
+  m <- prepare_measures(sample_data, sample_results)
+  ut <- sample_data$untransformed
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_untransformed = shiny::reactiveVal(ut)
     ),
     {
@@ -410,13 +410,13 @@ test_that("mod_FieldDetail_server passes untransformed to ts_data_table for SDTM
 
 
 test_that("mod_FieldDetail_server splits regular and missingness outlier counts", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
@@ -438,14 +438,14 @@ test_that("mod_FieldDetail_server splits regular and missingness outlier counts"
 })
 
 test_that("mod_FieldDetail_server applies global site filter in param_outliers", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   rv_sites <- shiny::reactiveVal(NULL)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_selected_sites = rv_sites
     ),
     {
@@ -461,13 +461,13 @@ test_that("mod_FieldDetail_server applies global site filter in param_outliers",
 })
 
 test_that("mod_FieldDetail_server param list handles text filter and alpha sort", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE, param_filter = "no_match_token")
@@ -482,13 +482,13 @@ test_that("mod_FieldDetail_server param list handles text filter and alpha sort"
 })
 
 test_that("mod_FieldDetail_server caps plot sites to 24", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -512,13 +512,13 @@ test_that("mod_FieldDetail_server caps plot sites to 24", {
 
 
 test_that("mod_FieldDetail_server include_miss=FALSE filters plot param_ids", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = FALSE)
@@ -536,39 +536,38 @@ test_that("mod_FieldDetail_server include_miss=FALSE filters plot param_ids", {
 })
 
 
-test_that("mod_FieldDetail_server missingness score table shows message for non-lab param", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+test_that("mod_FieldDetail_server missingness score table shows message for field without missingness", {
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
       session$flushReact()
 
       lookup <- rctv_param_lookup()
-      # VS parameters don't have ratio_missing companion
-      vs_ids <- lookup$display_id[grepl("^VS_", lookup$display_id)]
-      if (length(vs_ids) > 0) {
-        session$setInputs(selected_param = vs_ids[1])
-        expect_error(output$score_table_miss, class = "shiny.silent.error")
-      }
+      no_miss <- vapply(lookup$parameter_ids, function(pids) {
+        length(split_param_ids(pids, m)$missingness) == 0
+      }, logical(1))
+      session$setInputs(selected_param = lookup$display_id[which(no_miss)[1]])
+      expect_error(output$score_table_miss, class = "shiny.silent.error")
     }
   )
 })
 
 
-test_that("mod_FieldDetail_server regular score table renders for SDTM lab", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+test_that("mod_FieldDetail_server regular score table renders for lab field", {
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -628,13 +627,13 @@ test_that("plot_type_icon falls back when config icons NULL", {
 
 
 test_that("mod_FieldDetail_server rctv_visit_order populated for categorical param", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -655,13 +654,13 @@ test_that("mod_FieldDetail_server rctv_visit_order populated for categorical par
 })
 
 test_that("mod_FieldDetail_server rctv_visit_order is NULL for numeric param", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -678,13 +677,13 @@ test_that("mod_FieldDetail_server rctv_visit_order is NULL for numeric param", {
 })
 
 test_that("mod_FieldDetail_server apply_visit_order commits order to plot", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE)
@@ -719,14 +718,14 @@ test_that("mod_FieldDetail_server apply_visit_order commits order to plot", {
 })
 
 test_that("mod_FieldDetail_server feature selection filters scores", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  all_feats <- sort(unique(sample_sdtm_results$site_scores$feature))
+  m <- prepare_measures(sample_data, sample_results)
+  all_feats <- sort(unique(sample_results$site_scores$feature))
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(
@@ -762,14 +761,14 @@ test_that("mod_FieldDetail_server selects all features when config defaults NULL
   .cfg_env$default_features <- NULL
   on.exit(.cfg_env$default_features <- old_def, add = TRUE)
 
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  all_feats <- sort(unique(sample_sdtm_results$site_scores$feature))
+  m <- prepare_measures(sample_data, sample_results)
+  all_feats <- sort(unique(sample_results$site_scores$feature))
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(
@@ -783,15 +782,15 @@ test_that("mod_FieldDetail_server selects all features when config defaults NULL
   )
 })
 
-test_that("mod_FieldDetail_server query_table renders for SDTM data", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  qd <- sample_sdtm_data$queries
+test_that("mod_FieldDetail_server query_table renders for sample data", {
+  m <- prepare_measures(sample_data, sample_results)
+  qd <- sample_data$queries
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_queries = shiny::reactiveVal(qd)
     ),
     {
@@ -812,13 +811,13 @@ test_that("mod_FieldDetail_server query_table renders for SDTM data", {
 })
 
 test_that("mod_FieldDetail_server query_table shows message when no queries", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_queries = shiny::reactiveVal(NULL)
     ),
     {
@@ -834,15 +833,15 @@ test_that("mod_FieldDetail_server query_table shows message when no queries", {
   )
 })
 
-test_that("mod_FieldDetail_server pd_table renders for SDTM data", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
-  pd <- simulate_pd_data(sample_sdtm_data, seed = 1)
+test_that("mod_FieldDetail_server pd_table renders for sample data", {
+  m <- prepare_measures(sample_data, sample_results)
+  pd <- sample_data$pd
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_pd = shiny::reactiveVal(pd)
     ),
     {
@@ -863,13 +862,13 @@ test_that("mod_FieldDetail_server pd_table renders for SDTM data", {
 })
 
 test_that("mod_FieldDetail_server pd_table shows message when no PD data", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_pd = shiny::reactiveVal(NULL)
     ),
     {
@@ -887,13 +886,13 @@ test_that("mod_FieldDetail_server pd_table shows message when no PD data", {
 
 
 test_that("plot_title shows field name from parameter_name", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_dataset_label = shiny::reactiveVal("My Dataset"),
       rctv_studies = shiny::reactiveVal(c("STUDY-001", "STUDY-002"))
     ),
@@ -915,14 +914,14 @@ test_that("plot_title shows field name from parameter_name", {
 
 
 test_that("plot_title works without study filter", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_ctas_results),
-      rctv_dataset_label = shiny::reactiveVal("ctas sample"),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
+      rctv_dataset_label = shiny::reactiveVal("Sample data (gsm.ctas)"),
       rctv_studies = shiny::reactiveVal(NULL)
     ),
     {
@@ -941,7 +940,7 @@ test_that("plot_title works without study filter", {
 
 
 test_that("study filter properly filters measures, ctas_results, untransformed, and queries", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   subjects <- unique(m$subject_id)
   half <- ceiling(length(subjects) / 2)
@@ -950,11 +949,13 @@ test_that("study filter properly filters measures, ctas_results, untransformed, 
 
   m$study <- ifelse(m$subject_id %in% subj_a, "ST-A", "ST-B")
 
-  ut <- sample_sdtm_data$untransformed
+  ut <- sample_data$untransformed
+  ut$study <- NULL
   ut_subj <- unique(ut$subject_id)
   ut$study_label <- ifelse(ut$subject_id %in% subj_a, "ST-A", "ST-B")
 
-  qd <- sample_sdtm_data$queries
+  qd <- sample_data$queries
+  qd$study <- NULL
   if (!is.null(qd)) {
     qd_subj <- unique(qd$subject_id)
   }
@@ -963,7 +964,7 @@ test_that("study filter properly filters measures, ctas_results, untransformed, 
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_untransformed = shiny::reactiveVal(ut),
       rctv_queries = shiny::reactiveVal(qd),
       rctv_dataset_label = shiny::reactiveVal("multi"),
@@ -999,13 +1000,13 @@ test_that("study filter properly filters measures, ctas_results, untransformed, 
 })
 
 test_that("flt_untransformed filters by study column directly when present", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
   subjects <- unique(m$subject_id)
   half <- ceiling(length(subjects) / 2)
   subj_a <- subjects[seq_len(half)]
   m$study <- ifelse(m$subject_id %in% subj_a, "ST-A", "ST-B")
 
-  ut <- sample_sdtm_data$untransformed
+  ut <- sample_data$untransformed
   # Assign every untransformed row to ST-B so a subject-id filter would let
   # subj_a rows leak through. Only a `study`-based filter correctly drops
   # everything when ST-A is selected.
@@ -1015,7 +1016,7 @@ test_that("flt_untransformed filters by study column directly when present", {
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results),
+      rctv_ctas_results = shiny::reactiveVal(sample_results),
       rctv_untransformed = shiny::reactiveVal(ut),
       rctv_queries = shiny::reactiveVal(NULL),
       rctv_dataset_label = shiny::reactiveVal("multi"),
@@ -1034,13 +1035,13 @@ test_that("flt_untransformed filters by study column directly when present", {
 
 
 test_that("mod_FieldDetail_server linkage_mode='none' returns all field sites uncapped", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE,
@@ -1062,13 +1063,13 @@ test_that("mod_FieldDetail_server linkage_mode='none' returns all field sites un
 
 
 test_that("mod_FieldDetail_server linkage_mode='missingness' uses missingness DT rows", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 0, include_miss = TRUE,
@@ -1101,10 +1102,10 @@ test_that("mod_FieldDetail_server linkage_mode='missingness' uses missingness DT
 
 
 test_that("mod_FieldDetail_server param_no_ctas flags fields without ctas results", {
-  m <- prepare_measures(sample_ctas_data, sample_ctas_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   # Empty site_scores => every field is treated as lacking ctas results.
-  bogus_res <- sample_ctas_results
+  bogus_res <- sample_results
   bogus_res$site_scores <- bogus_res$site_scores[integer(0), , drop = FALSE]
 
   shiny::testServer(
@@ -1120,19 +1121,72 @@ test_that("mod_FieldDetail_server param_no_ctas flags fields without ctas result
       no_ctas <- param_no_ctas()
       lookup <- rctv_param_lookup()
       expect_setequal(no_ctas, lookup$display_id)
+
+      session$setInputs(selected_param = lookup$display_id[1])
+      session$flushReact()
+
+      scores <- rctv_scores_regular()
+      expect_true(isTRUE(attr(scores, "sites_only")))
+      expect_true(nrow(scores) > 0)
+      expect_no_error(output$score_table_regular)
+      expect_true(any(grepl("No CTAS scores", as.character(output$field_notice))))
+
+      n_take <- min(2L, nrow(scores))
+      session$setInputs(linkage_mode = "regular",
+                        score_table_regular_rows_current = seq_len(n_take))
+      session$flushReact()
+      expect_equal(rctv_plot_sites(), scores$site[seq_len(n_take)])
+    }
+  )
+})
+
+
+test_that("prepare_sites_only summarises sites for given parameters", {
+  m <- prepare_measures(sample_data, sample_results)
+  out <- prepare_sites_only(m, "RANGE_ALT")
+  expect_named(out, c("site", "n_subjects", "n_obs"))
+  expect_setequal(out$site, unique(m$site[m$parameter_id == "RANGE_ALT"]))
+  expect_true(isTRUE(attr(out, "sites_only")))
+  expect_s3_class(render_sites_only_dt(out), "datatables")
+})
+
+
+test_that("mod_FieldDetail_server param_only_miss flags unscored regular param with scored missingness", {
+  res <- sample_results
+  res$site_scores <- res$site_scores[res$site_scores$parameter_id != "RANGE_ALT", ,
+                                     drop = FALSE]
+  m <- prepare_measures(sample_data, res)
+
+  shiny::testServer(
+    mod_FieldDetail_server,
+    args = list(
+      rctv_measures = shiny::reactiveVal(m),
+      rctv_ctas_results = shiny::reactiveVal(res)
+    ),
+    {
+      session$setInputs(thresh = 1.3, include_miss = TRUE)
+      session$flushReact()
+
+      lookup <- rctv_param_lookup()
+      alt_id <- lookup$display_id[vapply(lookup$parameter_ids, function(p) {
+        "RANGE_ALT" %in% p
+      }, logical(1))]
+      expect_length(alt_id, 1)
+      expect_true(alt_id %in% param_only_miss())
+      expect_false(alt_id %in% param_no_ctas())
     }
   )
 })
 
 
 test_that("mod_FieldDetail_server field_notice renders 'Only missingness' for pure-miss field", {
-  m <- prepare_measures(sample_sdtm_data, sample_sdtm_results)
+  m <- prepare_measures(sample_data, sample_results)
 
   shiny::testServer(
     mod_FieldDetail_server,
     args = list(
       rctv_measures = shiny::reactiveVal(m),
-      rctv_ctas_results = shiny::reactiveVal(sample_sdtm_results)
+      rctv_ctas_results = shiny::reactiveVal(sample_results)
     ),
     {
       session$setInputs(thresh = 1.3, include_miss = TRUE)
